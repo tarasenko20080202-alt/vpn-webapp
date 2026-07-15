@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MyVPN</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --yellow-0:#ffd93d;
+    --yellow-1:#ffc400;
+    --yellow-2:#e8a800;
+    --yellow-3:#fff3c4;
+    --denim-0:#3b6ea5;
+    --denim-1:#2c527e;
+    --denim-2:#1d3a5c;
+    --denim-3:#14283f;
+    --steel:#8a9aa8;
+    --ink:#20303f;
+    --white:#fffdf5;
+    --danger:#e8503a;
+    --ok:#2f9e52;
+    --radius-lg:30px;
+    --radius-md:20px;
+    --radius-sm:14px;
+    --font-display:'Baloo 2', sans-serif;
+    --font-body:'Nunito', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--font-body);
+    background:
+      radial-gradient(120% 70% at 50% 0%, var(--yellow-3) 0%, var(--yellow-0) 45%, var(--yellow-1) 100%);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow-x:hidden;
+  }
+
+  /* subtle denim stripe pattern along the bottom, like overalls fabric */
+  body::after{
+    content:"";
+    position:fixed;
+    bottom:0; left:0; right:0;
+    height:140px;
+    background:
+      repeating-linear-gradient(115deg, rgba(59,110,165,0.05) 0 3px, transparent 3px 9px),
+      linear-gradient(180deg, transparent, rgba(59,110,165,0.10));
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .app{
+    display:flex;
+    flex-direction:column;
+    flex:1;
+    max-width:480px;
+    width:100%;
+    margin:0 auto;
+    padding:14px 16px 104px;
+    position:relative;
+    z-index:1;
+  }
+
+  /* ---------- header ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:6px 4px 16px;
+  }
+  .topbar .brand{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:19px;
+    color:var(--denim-2);
+  }
+  .brand .goggle-dot{
+    width:23px;height:23px;
+    border-radius:50%;
+    background:var(--white);
+    border:3px solid var(--steel);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:inset 0 -2px 3px rgba(0,0,0,0.08);
+  }
+  .brand .goggle-dot::after{
+    content:"";
+    width:9px;height:9px;
+    border-radius:50%;
+    background:var(--ink);
+  }
+  .icon-btn{
+    width:36px;height:36px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--white);
+    border:2px solid rgba(32,48,63,0.12);
+    color:var(--denim-1);
+    font-weight:700;
+    box-shadow:0 2px 0 rgba(32,48,63,0.08);
+  }
+  .topbar .actions{ display:flex; gap:8px; }
+
+  /* ---------- status card ---------- */
+  .status-card{
+    background: linear-gradient(175deg, var(--white) 0%, #fff8e0 100%);
+    border-radius: var(--radius-lg);
+    padding: 34px 22px 24px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    position:relative;
+    border: 4px solid var(--denim-0);
+    box-shadow: 0 10px 0 rgba(59,110,165,0.20), 0 24px 46px -22px rgba(29,58,92,0.45);
+  }
+  /* overall-strap rivets clipping the top corners */
+  .status-card::before, .status-card::after{
+    content:"";
+    position:absolute;
+    top:-15px;
+    width:28px;height:28px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #e8c458, #b8860b 85%);
+    border:3px solid var(--denim-2);
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+  }
+  .status-card::before{ left:36px; }
+  .status-card::after{ right:36px; }
+
+  .goggle-wrap{
+    position:relative;
+    width:140px;height:92px;
+    display:flex;align-items:center;justify-content:center;
+    gap:4px;
+    margin-bottom:22px;
+  }
+  .goggle-bridge{
+    position:absolute;
+    width:26px;height:9px;
+    background: linear-gradient(180deg, #a3aeb8, #7c8a9a);
+    border-radius:4px;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    box-shadow: inset 0 -2px 2px rgba(0,0,0,0.2);
+  }
+
+  .goggle{
+    width:64px;height:64px;
+    border-radius:50%;
+    background: radial-gradient(circle at 32% 26%, #ffffff 0%, #eef1f4 55%, #d3d9df 100%);
+    border:7px solid var(--steel);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:
+      inset 0 -5px 10px rgba(0,0,0,0.10),
+      0 6px 0 rgba(0,0,0,0.08);
+    position:relative;
+  }
+  .goggle::before{
+    /* glass glare */
+    content:"";
+    position:absolute;
+    top:9px; left:12px;
+    width:16px; height:9px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.85);
+    transform:rotate(-25deg);
+  }
+  .goggle.pulse{ animation: blink 4.5s ease-in-out infinite; }
+  @keyframes blink{
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.14); }
+  }
+  .pupil{
+    width:24px;height:24px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #3a4a5a, var(--ink) 70%);
+  }
+
+  .expiry{
+    font-family:var(--font-display);
+    font-size:25px;
+    font-weight:700;
+    color:var(--denim-2);
+    margin-bottom:8px;
+  }
+  .sub-line{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:14px;
+    font-weight:700;
+    color:var(--denim-1);
+    margin-bottom:20px;
+  }
+  .sub-line .status-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--ok);
+    box-shadow:0 0 0 4px rgba(47,158,82,0.18);
+  }
+  .sub-line.offline .status-dot{ background:var(--danger); box-shadow:0 0 0 4px rgba(232,80,58,0.18); }
+  .sub-line .sep{ color:var(--steel); font-weight:600; }
+
+  /* progress bar - days remaining */
+  .progress-row{ width:100%; margin-bottom:20px; }
+  .progress-labels{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    font-weight:800;
+    color:var(--denim-1);
+    margin-bottom:8px;
+  }
+  .progress-track{
+    height:10px;
+    border-radius:999px;
+    background:rgba(29,58,92,0.10);
+    overflow:hidden;
+    border:1px solid rgba(29,58,92,0.06);
+  }
+  .progress-fill{
+    height:100%;
+    border-radius:999px;
+    background: linear-gradient(90deg, var(--yellow-2), var(--yellow-0));
+  }
+
+  /* stat grid */
+  .stat-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:10px;
+    width:100%;
+    margin-bottom:22px;
+  }
+  .stat-box{
+    background:var(--yellow-3);
+    border:2px solid rgba(59,110,165,0.15);
+    border-radius:var(--radius-sm);
+    padding:11px 6px;
+    text-align:center;
+  }
+  .stat-box .num{
+    font-family:var(--font-display);
+    font-size:17px;
+    font-weight:700;
+    color:var(--denim-2);
+  }
+  .stat-box .lbl{
+    font-size:10px;
+    color:var(--denim-1);
+    opacity:0.7;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+    margin-top:2px;
+  }
+
+  .cta-primary{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background: linear-gradient(95deg, var(--denim-0), var(--denim-1));
+    color:var(--white);
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:15.5px;
+    padding:16px 20px;
+    border-radius:999px;
+    border:3px solid var(--denim-2);
+    margin-bottom:12px;
+    box-shadow:0 5px 0 var(--denim-2);
+    transition:transform 0.08s, box-shadow 0.08s;
+  }
+  .cta-primary:active{ transform:translateY(4px); box-shadow:0 1px 0 var(--denim-2); }
+  .cta-primary .price{
+    background:rgba(255,255,255,0.18);
+    padding:4px 11px;
+    border-radius:999px;
+    font-size:12.5px;
+    font-family:var(--font-body);
+    font-weight:800;
+  }
+
+  .cta-secondary{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    background:var(--white);
+    color:var(--denim-2);
+    font-weight:700;
+    font-size:14.5px;
+    padding:14px 20px;
+    border-radius:999px;
+    border:3px solid var(--yellow-2);
+    box-shadow:0 4px 0 rgba(184,134,11,0.35);
+    transition:transform 0.08s, box-shadow 0.08s;
+  }
+  .cta-secondary:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(184,134,11,0.35); }
+
+  /* ---------- promo banner ---------- */
+  .promo{
+    margin-top:16px;
+    background: linear-gradient(120deg, var(--denim-1), var(--denim-2));
+    border-radius:var(--radius-md);
+    padding:16px 17px;
+    color:var(--white);
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+  }
+  .promo .badge{
+    width:34px;height:34px;
+    flex-shrink:0;
+    border-radius:10px;
+    background:var(--yellow-1);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;
+  }
+  .promo .body{ flex:1; }
+  .promo .txt{ font-size:13px; line-height:1.5; opacity:0.95; }
+  .promo .txt b{ color:var(--yellow-0); }
+  .promo-btn{
+    margin-top:11px;
+    width:100%;
+    background:var(--yellow-1);
+    color:var(--denim-2);
+    font-size:13px;
+    font-weight:800;
+    padding:11px 14px;
+    border-radius:999px;
+    border:none;
+  }
+
+  /* ---------- device list ---------- */
+  .section-label{
+    font-size:12px;
+    font-weight:800;
+    color:var(--denim-1);
+    opacity:0.75;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    margin:22px 4px 10px;
+  }
+  .device-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    border-radius:var(--radius-md);
+    padding:13px 16px;
+    border:2px solid rgba(59,110,165,0.14);
+    margin-bottom:8px;
+  }
+  .device-row .left{ display:flex; align-items:center; gap:12px; }
+  .device-row .ico{
+    width:34px;height:34px;
+    border-radius:10px;
+    background:var(--yellow-3);
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;
+  }
+  .device-row .name{ font-size:14px; font-weight:800; color:var(--ink); }
+  .device-row .sub{ font-size:11px; color:var(--steel); margin-top:1px; }
+  .device-row .status-chip{
+    font-size:10.5px;
+    font-weight:800;
+    color:var(--ok);
+    background:rgba(47,158,82,0.10);
+    padding:4px 10px;
+    border-radius:999px;
+  }
+
+  /* ---------- info tiles ---------- */
+  .tiles{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:18px;
+  }
+  .tile{
+    background:var(--white);
+    border:3px solid rgba(59,110,165,0.20);
+    border-radius:var(--radius-md);
+    padding:14px 16px;
+  }
+  .tile .label{ font-size:11.5px; color:var(--steel); font-weight:700; margin-bottom:5px; }
+  .tile .value{ font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--denim-2); }
+
+  /* ---------- bottom nav ---------- */
+  .bottom-nav{
+    position:fixed;
+    bottom:14px;
+    left:50%;
+    transform:translateX(-50%);
+    width:calc(100% - 32px);
+    max-width:448px;
+    background:var(--denim-1);
+    border:3px solid var(--denim-2);
+    border-radius:999px;
+    display:flex;
+    justify-content:space-around;
+    padding:8px;
+    z-index:2;
+    box-shadow:0 8px 20px -8px rgba(20,40,63,0.5);
+  }
+  .nav-btn{
+    width:46px;height:46px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;
+    border:none;
+    color:var(--white);
+    opacity:0.62;
+    font-size:19px;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .nav-btn.active{
+    background:var(--yellow-1);
+    color:var(--denim-2);
+    opacity:1;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand"><span class="goggle-dot"></span>MyVPN</div>
+      <div class="actions">
+        <button class="icon-btn" aria-label="Меню">⋮</button>
+        <button class="icon-btn" id="closeBtn" aria-label="Закрыть">✕</button>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <div class="goggle-wrap">
+        <div class="goggle pulse"><div class="pupil"></div></div>
+        <div class="goggle-bridge"></div>
+        <div class="goggle pulse"><div class="pupil"></div></div>
+      </div>
+
+      <div class="expiry" id="expiryText">Загрузка…</div>
+      <div class="sub-line" id="subLine">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">на связи</span>
+      </div>
+
+      <div class="progress-row">
+        <div class="progress-labels">
+          <span id="daysLeftLabel">— дней осталось</span>
+          <span id="periodLabel">из 30</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="num" id="trafficVal">0</div>
+          <div class="lbl">ГБ трафика</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="devicesVal">1</div>
+          <div class="lbl">устройств</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="pingVal">24</div>
+          <div class="lbl">мс пинг</div>
+        </div>
+      </div>
+
+      <button class="cta-primary" id="renewBtn">
+        <span>⚡ Продлить подписку</span>
+        <span class="price" id="priceTag">от 249 ₽</span>
+      </button>
+      <button class="cta-secondary" id="setupBtn">🔧 Установка и настройка</button>
+    </div>
+
+    <div class="promo" id="promoBlock">
+      <div class="badge">🍌</div>
+      <div class="body">
+        <div class="txt"><b>Банана-выгода!</b> Тариф на 3 устройства всего за 299 ₽ — доплата 50 ₽, а гаджетов в 3 раза больше.</div>
+        <button class="promo-btn" id="promoBtn">Взять тариф побольше</button>
+      </div>
+    </div>
+
+    <div class="section-label">Ваши устройства</div>
+    <div id="deviceList">
+      <div class="device-row">
+        <div class="left">
+          <div class="ico">📱</div>
+          <div>
+            <div class="name">iPhone 15</div>
+            <div class="sub">Подключено 2 часа назад</div>
+          </div>
+        </div>
+        <div class="status-chip">В сети</div>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <div class="label">Сервер</div>
+        <div class="value" id="serverTile">Европа</div>
+      </div>
+      <div class="tile">
+        <div class="label">Бонус за друга</div>
+        <div class="value">+3 дня</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-tab="home">🏠</button>
+    <button class="nav-btn" data-tab="settings">⚙️</button>
+    <button class="nav-btn" data-tab="profile">👤</button>
+    <button class="nav-btn" data-tab="support">🎧</button>
+  </div>
+
+<script>
+(function(){
+  const tg = window.Telegram ? window.Telegram.WebApp : null;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  const els = {
+    expiry: document.getElementById('expiryText'),
+    subLine: document.getElementById('subLine'),
+    statusDot: document.getElementById('statusDot'),
+    statusText: document.getElementById('statusText'),
+    trafficVal: document.getElementById('trafficVal'),
+    devicesVal: document.getElementById('devicesVal'),
+    pingVal: document.getElementById('pingVal'),
+    priceTag: document.getElementById('priceTag'),
+    daysLeftLabel: document.getElementById('daysLeftLabel'),
+    periodLabel: document.getElementById('periodLabel'),
+    progressFill: document.getElementById('progressFill'),
+  };
+
+  // Replace with a real call to your bot's backend, e.g.:
+  //   fetch('https://your-domain.com/api/status?user_id=' + tg.initDataUnsafe.user.id)
+  function loadStatus(){
+    const fallback = {
+      active: true,
+      expires: '05.08.2026',
+      daysLeft: 21,
+      periodDays: 30,
+      trafficGb: 2.15,
+      devices: 1,
+      pingMs: 24,
+      pricePerMonth: 249,
+    };
+    try {
+      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+        const parsed = JSON.parse(decodeURIComponent(tg.initDataUnsafe.start_param));
+        return Object.assign(fallback, parsed);
+      }
+    } catch (e) { /* ignore malformed start_param, use fallback */ }
+    return fallback;
+  }
+
+  function render(d){
+    els.expiry.textContent = d.active ? `до ${d.expires}` : 'Подписка неактивна';
+    els.subLine.classList.toggle('offline', !d.active);
+    els.statusText.textContent = d.active ? 'на связи' : 'офлайн';
+    els.trafficVal.textContent = d.trafficGb;
+    els.devicesVal.textContent = d.devices;
+    els.pingVal.textContent = d.pingMs;
+    els.priceTag.textContent = `от ${d.pricePerMonth} ₽`;
+    els.daysLeftLabel.textContent = `${d.daysLeft} дней осталось`;
+    els.periodLabel.textContent = `из ${d.periodDays}`;
+    const pct = Math.max(0, Math.min(100, (d.daysLeft / d.periodDays) * 100));
+    els.progressFill.style.width = pct + '%';
+  }
+
+  render(loadStatus());
+
+  document.getElementById('closeBtn').addEventListener('click', () => { if (tg) tg.close(); });
+  document.getElementById('renewBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'buy'}));
+  });
+  document.getElementById('setupBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'setup'}));
+  });
+  document.getElementById('promoBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'buy', devices: 3}));
+  });
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (tg) tg.sendData(JSON.stringify({action: 'nav', tab: btn.dataset.tab}));
+    });
+  });
+})();
+</script>
+</body>
+</html>
