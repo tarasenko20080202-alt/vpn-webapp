@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MyVPN</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --yellow-0:#ffd93d;
+  --yellow-1:#ffc400;
+  --yellow-2:#e8a800;
+  --yellow-3:#fff3c4;
+  --denim-0:#3b6ea5;
+  --denim-1:#2c527e;
+  --denim-2:#1d3a5c;
+  --denim-3:#14283f;
+  --steel:#8a9aa8;
+  --ink:#20303f;
+  --white:#fffdf5;
+  --danger:#e8503a;
+  --ok:#2f9e52;
+  --radius-lg:30px;
+  --radius-md:20px;
+  --radius-sm:14px;
+  --font-display:'Baloo 2', sans-serif;
+  --font-body:'Nunito', sans-serif;
+}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none;}
+html,body{height:100%; overscroll-behavior-y:contain;}
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+body{
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  background:
+    radial-gradient(120% 70% at 50% 0%, var(--yellow-3) 0%, var(--yellow-0) 45%, var(--yellow-1) 100%);
+  color:var(--ink);
+  min-height:100vh;
+  min-height:calc(var(--tg-viewport-stable-height, 100vh));
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+}
+button, input, select, textarea{
+  font-family:inherit;
+  -webkit-appearance:none;
+  appearance:none;
+  outline:none;
+  -webkit-user-select:none;
+}
+body::after{
+  content:"";
+  position:fixed;
+  bottom:0; left:0; right:0;
+  height:140px;
+  background:
+    repeating-linear-gradient(115deg, rgba(59,110,165,0.05) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, transparent, rgba(59,110,165,0.10));
+  pointer-events:none;
+  z-index:0;
+}
+.app{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  max-width:480px;
+  width:100%;
+  margin:0 auto;
+  padding:calc(14px + env(safe-area-inset-top)) 16px calc(104px + env(safe-area-inset-bottom));
+  position:relative;
+  z-index:1;
+}
+button, .tappable{
+  cursor:pointer;
+  -webkit-user-select:none;
+  touch-action:manipulation;
+  transition: transform 0.32s cubic-bezier(.22,1,.36,1), box-shadow 0.32s ease, opacity 0.32s ease, background 0.32s ease;
+  will-change: transform;
+}
+button.is-pressed, .tappable.is-pressed{
+  transform:scale(0.94);
+  opacity:0.88;
+}
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 4px 16px;
+}
+.topbar .brand{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:19px;
+  color:var(--denim-2);
+}
+.brand .goggle-dot{
+  width:23px;height:23px;
+  border-radius:50%;
+  background:var(--white);
+  border:3px solid var(--steel);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 -2px 3px rgba(0,0,0,0.08);
+}
+.brand .goggle-dot::after{
+  content:"";
+  width:9px;height:9px;
+  border-radius:50%;
+  background:var(--ink);
+}
+.icon-btn{
+  width:36px;height:36px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--white);
+  border:2px solid rgba(32,48,63,0.12);
+  color:var(--denim-1);
+  font-weight:700;
+  box-shadow:0 2px 0 rgba(32,48,63,0.08);
+}
+.topbar .actions{ display:flex; gap:8px; }
+.status-card{
+  background: linear-gradient(175deg, var(--white) 0%, #fff8e0 100%);
+  border-radius: var(--radius-lg);
+  padding: 34px 22px 24px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  position:relative;
+  border: 4px solid var(--denim-0);
+  box-shadow: 0 10px 0 rgba(59,110,165,0.20), 0 24px 46px -22px rgba(29,58,92,0.45);
+}
+.status-card::before, .status-card::after{
+  content:"";
+  position:absolute;
+  top:-15px;
+  width:28px;height:28px;
+  border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, #e8c458, #b8860b 85%);
+  border:3px solid var(--denim-2);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+}
+.status-card::before{ left:36px; }
+.status-card::after{ right:36px; }
+.goggle-wrap{
+  position:relative;
+  width:140px;height:92px;
+  display:flex;align-items:center;justify-content:center;
+  gap:4px;
+  margin-bottom:22px;
+}
+.goggle-bridge{
+  position:absolute;
+  width:26px;height:9px;
+  background: linear-gradient(180deg, #a3aeb8, #7c8a9a);
+  border-radius:4px;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  box-shadow: inset 0 -2px 2px rgba(0,0,0,0.2);
+}
+.goggle{
+  width:64px;height:64px;
+  border-radius:50%;
+  background: radial-gradient(circle at 32% 26%, #ffffff 0%, #eef1f4 55%, #d3d9df 100%);
+  border:7px solid var(--steel);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:
+    inset 0 -5px 10px rgba(0,0,0,0.10),
+    0 6px 0 rgba(0,0,0,0.08);
+  position:relative;
+}
+.goggle::before{
+  content:"";
+  position:absolute;
+  top:9px; left:12px;
+  width:16px; height:9px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.85);
+  transform:rotate(-25deg);
+}
+.goggle.pulse{ animation: blink 4.5s ease-in-out infinite; }
+@keyframes blink{
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.14); }
+}
+.pupil{
+  width:24px;height:24px;
+  border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, #3a4a5a, var(--ink) 70%);
+}
+.expiry{
+  font-family:var(--font-display);
+  font-size:25px;
+  font-weight:700;
+  color:var(--denim-2);
+  margin-bottom:8px;
+}
+.sub-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+  font-weight:700;
+  color:var(--denim-1);
+  margin-bottom:20px;
+}
+.sub-line .status-dot{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--ok);
+  box-shadow:0 0 0 4px rgba(47,158,82,0.18);
+}
+.sub-line.offline .status-dot{ background:var(--danger); box-shadow:0 0 0 4px rgba(232,80,58,0.18); }
+.sub-line .sep{ color:var(--steel); font-weight:600; }
+.progress-row{ width:100%; margin-bottom:20px; }
+.progress-labels{
+  display:flex;
+  justify-content:space-between;
+  font-size:12.5px;
+  font-weight:800;
+  color:var(--denim-1);
+  margin-bottom:8px;
+}
+.progress-track{
+  height:10px;
+  border-radius:999px;
+  background:rgba(29,58,92,0.10);
+  overflow:hidden;
+  border:1px solid rgba(29,58,92,0.06);
+}
+.progress-fill{
+  height:100%;
+  border-radius:999px;
+  background: linear-gradient(90deg, var(--yellow-2), var(--yellow-0));
+  transition: width 0.8s cubic-bezier(.22,1,.36,1);
+}
+.stat-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+  width:100%;
+  margin-bottom:22px;
+}
+.stat-box{
+  background:var(--yellow-3);
+  border:2px solid rgba(59,110,165,0.15);
+  border-radius:var(--radius-sm);
+  padding:11px 6px;
+  text-align:center;
+}
+.stat-box .num{
+  font-family:var(--font-display);
+  font-size:17px;
+  font-weight:700;
+  color:var(--denim-2);
+}
+.stat-box .lbl{
+  font-size:10px;
+  color:var(--denim-1);
+  opacity:0.7;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.3px;
+  margin-top:2px;
+}
+.cta-primary{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background: linear-gradient(95deg, var(--denim-0), var(--denim-1));
+  color:var(--white);
+  font-family:var(--font-display);
+  font-weight:600;
+  font-size:15.5px;
+  padding:16px 20px;
+  border-radius:999px;
+  border:3px solid var(--denim-2);
+  margin-bottom:12px;
+  box-shadow:0 5px 0 var(--denim-2);
+}
+.cta-primary.is-pressed{ transform:translateY(4px) scale(0.98); box-shadow:0 1px 0 var(--denim-2); }
+.cta-primary .price{
+  background:rgba(255,255,255,0.18);
+  padding:4px 11px;
+  border-radius:999px;
+  font-size:12.5px;
+  font-family:var(--font-body);
+  font-weight:800;
+}
+.cta-secondary{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  background:var(--white);
+  color:var(--denim-2);
+  font-weight:700;
+  font-size:14.5px;
+  padding:14px 20px;
+  border-radius:999px;
+  border:3px solid var(--yellow-2);
+  box-shadow:0 4px 0 rgba(184,134,11,0.35);
+}
+.cta-secondary.is-pressed{ transform:translateY(3px) scale(0.98); box-shadow:0 1px 0 rgba(184,134,11,0.35); }
+.promo{
+  margin-top:16px;
+  background: linear-gradient(120deg, var(--denim-1), var(--denim-2));
+  border-radius:var(--radius-md);
+  padding:16px 17px;
+  color:var(--white);
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+.promo .badge{
+  width:34px;height:34px;
+  flex-shrink:0;
+  border-radius:10px;
+  background:var(--yellow-1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+}
+.promo .body{ flex:1; }
+.promo .txt{ font-size:13px; line-height:1.5; opacity:0.95; }
+.promo .txt b{ color:var(--yellow-0); }
+.promo-btn{
+  margin-top:11px;
+  width:100%;
+  background:var(--yellow-1);
+  color:var(--denim-2);
+  font-size:13px;
+  font-weight:800;
+  padding:11px 14px;
+  border-radius:999px;
+  border:none;
+}
+.section-label{
+  font-size:12px;
+  font-weight:800;
+  color:var(--denim-1);
+  opacity:0.75;
+  text-transform:uppercase;
+  letter-spacing:0.4px;
+  margin:22px 4px 10px;
+}
+.device-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--white);
+  border-radius:var(--radius-md);
+  padding:13px 16px;
+  border:2px solid rgba(59,110,165,0.14);
+  margin-bottom:8px;
+}
+.device-row .left{ display:flex; align-items:center; gap:12px; }
+.device-row .ico{
+  width:34px;height:34px;
+  border-radius:10px;
+  background:var(--yellow-3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;
+}
+.device-row .name{ font-size:14px; font-weight:800; color:var(--ink); }
+.device-row .sub{ font-size:11px; color:var(--steel); margin-top:1px; }
+.device-row .status-chip{
+  font-size:10.5px;
+  font-weight:800;
+  color:var(--ok);
+  background:rgba(47,158,82,0.10);
+  padding:4px 10px;
+  border-radius:999px;
+}
+.device-row .kick-btn{
+  font-size:10.5px;
+  font-weight:800;
+  color:var(--danger);
+  background:rgba(232,80,58,0.10);
+  padding:6px 10px;
+  border-radius:999px;
+  border:none;
+}
+.tiles{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:18px;
+}
+.tile{
+  background:var(--white);
+  border:3px solid rgba(59,110,165,0.20);
+  border-radius:var(--radius-md);
+  padding:14px 16px;
+}
+.tile .label{ font-size:11.5px; color:var(--steel); font-weight:700; margin-bottom:5px; }
+.tile .value{ font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--denim-2); }
+.chip-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+.chip{
+  background:var(--white);
+  border:2px solid rgba(59,110,165,0.18);
+  color:var(--denim-1);
+  font-weight:800;
+  font-size:13px;
+  padding:10px 16px;
+  border-radius:999px;
+}
+.chip.active{
+  background:var(--denim-1);
+  color:var(--white);
+  border-color:var(--denim-2);
+}
+.switch-row{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--white);
+  border:2px solid rgba(59,110,165,0.14);
+  border-radius:var(--radius-md);
+  padding:14px 16px;
+  margin-bottom:10px;
+}
+.switch-row .txt{ font-size:13.5px; font-weight:800; color:var(--ink); }
+.switch-row .sub{ font-size:11px; color:var(--steel); margin-top:2px; font-weight:600; }
+.switch{
+  width:46px; height:27px;
+  border-radius:999px;
+  background:rgba(59,110,165,0.25);
+  border:none;
+  position:relative;
+  flex-shrink:0;
+}
+.switch::after{
+  content:"";
+  position:absolute;
+  top:3px; left:3px;
+  width:21px; height:21px;
+  border-radius:50%;
+  background:var(--white);
+  box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1);
+}
+.switch.on{ background:var(--ok); }
+.switch.on::after{ transform:translateX(19px); }
+.avatar-block{
+  display:flex; flex-direction:column; align-items:center;
+  padding:18px 0 22px;
+}
+.avatar{
+  width:76px;height:76px;
+  border-radius:50%;
+  background:linear-gradient(160deg,var(--yellow-0),var(--yellow-2));
+  border:4px solid var(--denim-1);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);
+  font-size:28px;
+  font-weight:700;
+  color:var(--denim-2);
+  margin-bottom:12px;
+}
+.avatar-name{ font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--denim-2); }
+.avatar-sub{ font-size:12.5px; color:var(--steel); font-weight:700; margin-top:2px; }
+.ref-box{
+  background:var(--white);
+  border:3px solid rgba(59,110,165,0.20);
+  border-radius:var(--radius-md);
+  padding:16px;
+  margin-bottom:14px;
+}
+.ref-box .lead{ font-size:13px; font-weight:800; color:var(--ink); margin-bottom:10px; }
+.ref-link{
+  display:flex; align-items:center; gap:8px;
+  background:var(--yellow-3);
+  border-radius:var(--radius-sm);
+  padding:10px 12px;
+  margin-bottom:10px;
+}
+.ref-link span{
+  flex:1; font-size:11.5px; color:var(--denim-2); font-weight:700;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.copy-btn{
+  background:var(--denim-1); color:var(--white);
+  border:none; border-radius:999px;
+  font-size:11.5px; font-weight:800;
+  padding:8px 13px; flex-shrink:0;
+}
+.share-btn{
+  width:100%;
+  background:var(--yellow-1); color:var(--denim-2);
+  border:none; border-radius:999px;
+  font-weight:800; font-size:13.5px;
+  padding:12px;
+}
+.toast{
+  position:fixed; left:50%; bottom:96px;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--denim-2); color:var(--white);
+  font-size:13px; font-weight:700;
+  padding:10px 18px; border-radius:999px;
+  opacity:0; pointer-events:none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index:60;
+  white-space:nowrap;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.faq-item{
+  background:var(--white);
+  border:2px solid rgba(59,110,165,0.15);
+  border-radius:var(--radius-md);
+  margin-bottom:10px;
+  overflow:hidden;
+}
+.faq-q{
+  width:100%;
+  display:flex; align-items:center; justify-content:space-between;
+  background:none; border:none;
+  padding:14px 16px;
+  font-size:13.5px; font-weight:800; color:var(--ink);
+  text-align:left;
+}
+.faq-q .arrow{ transition: transform 0.25s ease; color:var(--denim-1); }
+.faq-item.open .faq-q .arrow{ transform:rotate(180deg); }
+.faq-a{
+  max-height:0;
+  overflow:hidden;
+  transition: max-height 0.28s ease, padding 0.28s ease;
+  font-size:12.5px; color:var(--steel); font-weight:600; line-height:1.6;
+  padding:0 16px;
+}
+.faq-item.open .faq-a{ max-height:200px; padding:0 16px 16px; }
+.support-cta{
+  width:100%;
+  background:var(--denim-1); color:var(--white);
+  border:none; border-radius:999px;
+  font-weight:800; font-size:14px;
+  padding:15px; margin-top:6px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.tab-panel{ display:none; }
+.tab-panel.current{ display:block; }
+.tab-panel.enter{ animation: panelIn 0.46s cubic-bezier(.22,1,.36,1); }
+.tab-panel.leaving{ display:block; position:absolute; left:16px; right:16px; pointer-events:none; animation: panelOut 0.28s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes panelIn{
+  0%{ opacity:0; transform:translateY(16px); }
+  100%{ opacity:1; transform:translateY(0); }
+}
+@keyframes panelOut{
+  0%{ opacity:1; transform:translateY(0); }
+  100%{ opacity:0; transform:translateY(-10px); }
+}
+.bottom-nav{
+  position:fixed;
+  bottom:calc(14px + env(safe-area-inset-bottom));
+  left:50%;
+  transform:translateX(-50%);
+  width:calc(100% - 32px);
+  max-width:448px;
+  background:var(--denim-1);
+  border:3px solid var(--denim-2);
+  border-radius:999px;
+  display:flex;
+  justify-content:space-around;
+  padding:8px;
+  z-index:2;
+  box-shadow:0 8px 20px -8px rgba(20,40,63,0.5);
+}
+.nav-btn{
+  width:46px;height:46px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;
+  border:none;
+  color:var(--white);
+  opacity:0.62;
+  font-size:19px;
+}
+.nav-btn.active{
+  background:var(--yellow-1);
+  color:var(--denim-2);
+  opacity:1;
+}
+.nav-btn.is-pressed{ transform:scale(0.82); }
+.nav-btn[data-tab="settings"].is-pressed{ transform:none; opacity:0.8; }
+.icon-wrap{ position:relative; display:inline-flex; align-items:center; justify-content:center; }
+.icon-wrap i{ position:absolute; font-style:normal; pointer-events:none; line-height:1; }
+.steam{
+  bottom:100%; left:50%;
+  font-size:0;
+  width:5px; height:5px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.85);
+  opacity:0;
+  transform:translate(-50%,0) scale(0.4);
+  animation: steamRise 2.6s ease-in-out infinite;
+}
+.steam.st1{ left:42%; animation-delay:0s; }
+.steam.st2{ left:50%; animation-delay:0.55s; }
+.steam.st3{ left:58%; animation-delay:1.1s; }
+@keyframes steamRise{
+  0%{ opacity:0; transform:translate(-50%,2px) scale(0.4); }
+  25%{ opacity:0.85; }
+  70%{ opacity:0.3; }
+  100%{ opacity:0; transform:translate(-50%,-15px) scale(1.15); }
+}
+.glasses{
+  top:-2px; left:50%;
+  font-size:12px;
+  opacity:0;
+  transform:translate(-50%,-16px) scale(0.7);
+  animation: glassesOn 4.2s cubic-bezier(.22,1,.36,1) infinite;
+}
+@keyframes glassesOn{
+  0%{ opacity:0; transform:translate(-50%,-16px) scale(0.7); }
+  18%{ opacity:1; transform:translate(-50%,-1px) scale(1); }
+  70%{ opacity:1; transform:translate(-50%,-1px) scale(1); }
+  88%{ opacity:0; transform:translate(-50%,-16px) scale(0.7); }
+  100%{ opacity:0; transform:translate(-50%,-16px) scale(0.7); }
+}
+.note{
+  top:2px; font-size:9px; color:var(--white);
+  opacity:0;
+  animation: noteFloat 2.8s ease-in-out infinite;
+}
+.note.nt1{ left:2px; animation-delay:0s; }
+.note.nt2{ left:16px; animation-delay:0.7s; }
+.note.nt3{ left:9px; animation-delay:1.4s; }
+@keyframes noteFloat{
+  0%{ opacity:0; transform:translate(0,0) rotate(0deg); }
+  15%{ opacity:1; }
+  100%{ opacity:0; transform:translate(6px,-18px) rotate(18deg); }
+}
+.gear-icon{
+  display:inline-block;
+  transition: transform 0.5s cubic-bezier(.22,1,.36,1);
+}
+.gear-icon.spin{
+  animation: gearSpin 3.6s linear infinite;
+}
+@keyframes gearSpin{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
+
+/* ================= NEW: sub-pages (overlay screens) ================= */
+.subpage{
+  position:fixed; inset:0;
+  background:
+    radial-gradient(120% 70% at 50% 0%, var(--yellow-3) 0%, var(--yellow-0) 45%, var(--yellow-1) 100%);
+  z-index:40;
+  display:none;
+  flex-direction:column;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.subpage.open{ display:flex; animation: panelIn 0.32s cubic-bezier(.22,1,.36,1); }
+.subpage-inner{
+  max-width:480px; width:100%; margin:0 auto;
+  padding:calc(14px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));
+  flex:1;
+}
+.subpage-topbar{
+  display:flex; align-items:center; gap:10px;
+  padding:6px 4px 18px;
+}
+.subpage-back{
+  width:36px;height:36px; border-radius:50%;
+  background:var(--white); border:2px solid rgba(32,48,63,0.12);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--denim-1); font-weight:800; font-size:16px; flex-shrink:0;
+}
+.subpage-title{ font-family:var(--font-display); font-weight:700; font-size:18px; color:var(--denim-2); }
+.subpage-sub{ font-size:12px; color:var(--denim-1); opacity:0.75; font-weight:700; margin-top:1px; }
+
+/* ---- buy plan screen ---- */
+.stepper-row{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--white); border:3px solid rgba(59,110,165,0.20);
+  border-radius:var(--radius-md); padding:14px 16px; margin-bottom:16px;
+}
+.stepper-row .txt{ font-size:13.5px; font-weight:800; color:var(--ink); }
+.stepper-row .sub{ font-size:11px; color:var(--steel); font-weight:600; margin-top:2px; }
+.stepper{ display:flex; align-items:center; gap:12px; }
+.stepper button{
+  width:32px;height:32px; border-radius:50%;
+  background:var(--denim-1); color:var(--white);
+  border:none; font-size:17px; font-weight:800;
+  display:flex; align-items:center; justify-content:center;
+}
+.stepper button:disabled{ opacity:0.35; }
+.stepper .val{ font-family:var(--font-display); font-size:17px; font-weight:700; min-width:18px; text-align:center; }
+.plan-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px; }
+.plan-card{
+  background:var(--white); border:3px solid rgba(59,110,165,0.18);
+  border-radius:var(--radius-md); padding:16px 14px; text-align:left; position:relative;
+}
+.plan-card.active{ border-color:var(--denim-1); box-shadow:0 4px 0 rgba(29,58,92,0.18); }
+.plan-card .period{ font-size:13px; font-weight:800; color:var(--ink); margin-bottom:8px; }
+.plan-card .price{ font-family:var(--font-display); font-size:19px; font-weight:700; color:var(--denim-2); }
+.plan-card .permonth{ font-size:11px; color:var(--steel); font-weight:700; margin-top:2px; }
+.plan-card .save-badge{
+  position:absolute; top:-10px; right:10px;
+  background:var(--yellow-1); color:var(--denim-2);
+  font-size:10px; font-weight:800; padding:3px 9px; border-radius:999px;
+  border:2px solid var(--denim-2);
+}
+.pay-method-row{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--white); border:2px solid rgba(59,110,165,0.14);
+  border-radius:var(--radius-md); padding:13px 16px; margin-bottom:8px;
+}
+.pay-method-row .left{ display:flex; align-items:center; gap:12px; font-size:13.5px; font-weight:800; color:var(--ink); }
+.pay-method-row .radio{
+  width:20px;height:20px; border-radius:50%; border:3px solid var(--steel); flex-shrink:0;
+}
+.pay-method-row.active .radio{ border-color:var(--denim-1); background:
+    radial-gradient(circle, var(--denim-1) 0 40%, transparent 42%);
+}
+.total-box{
+  background: linear-gradient(120deg, var(--denim-1), var(--denim-2));
+  color:var(--white); border-radius:var(--radius-md); padding:16px;
+  display:flex; align-items:center; justify-content:space-between; margin:16px 0;
+}
+.total-box .lbl{ font-size:12.5px; opacity:0.85; font-weight:700; }
+.total-box .amount{ font-family:var(--font-display); font-size:22px; font-weight:700; }
+
+/* ---- setup screen ---- */
+.platform-tabs{ display:flex; gap:8px; margin-bottom:20px; overflow-x:auto; }
+.platform-tab{
+  background:var(--white); border:2px solid rgba(59,110,165,0.18);
+  color:var(--denim-1); font-weight:800; font-size:13px;
+  padding:10px 16px; border-radius:999px; white-space:nowrap; flex-shrink:0;
+}
+.platform-tab.active{ background:var(--denim-1); color:var(--white); border-color:var(--denim-2); }
+.setup-icon-wrap{
+  display:flex; align-items:center; justify-content:center;
+  margin:10px 0 26px;
+}
+.setup-icon{
+  width:120px;height:120px; border-radius:50%;
+  background:var(--white); border:5px solid var(--denim-0);
+  display:flex; align-items:center; justify-content:center; font-size:46px;
+  box-shadow:0 8px 0 rgba(59,110,165,0.18);
+}
+.step-row{
+  display:flex; gap:14px; background:var(--white);
+  border:2px solid rgba(59,110,165,0.15); border-radius:var(--radius-md);
+  padding:14px 16px; margin-bottom:10px;
+}
+.step-row .num{
+  width:28px;height:28px; border-radius:50%; background:var(--yellow-1);
+  color:var(--denim-2); font-family:var(--font-display); font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:14px;
+}
+.step-row .txt{ font-size:13px; font-weight:700; color:var(--ink); line-height:1.5; }
+
+/* ---- profile menu list ---- */
+.menu-list{ background:var(--white); border:3px solid rgba(59,110,165,0.18); border-radius:var(--radius-md); overflow:hidden; margin-bottom:16px; }
+.menu-item{
+  width:100%; display:flex; align-items:center; gap:12px;
+  background:none; border:none; padding:14px 16px;
+  border-bottom:1px solid rgba(59,110,165,0.10); text-align:left;
+}
+.menu-item:last-child{ border-bottom:none; }
+.menu-item .ico{
+  width:34px;height:34px; border-radius:10px; background:var(--yellow-3);
+  display:flex;align-items:center;justify-content:center; font-size:15px; flex-shrink:0;
+}
+.menu-item .txt{ flex:1; }
+.menu-item .title{ font-size:13.5px; font-weight:800; color:var(--ink); }
+.menu-item .sub{ font-size:11px; color:var(--steel); font-weight:600; margin-top:1px; }
+.menu-item .chev{ color:var(--steel); font-weight:800; }
+
+/* ---- backup-access ---- */
+.backup-card{
+  background:var(--white); border:3px solid rgba(59,110,165,0.20);
+  border-radius:var(--radius-md); padding:16px; margin-bottom:12px;
+}
+.backup-card .lead{ font-size:13.5px; font-weight:800; color:var(--ink); margin-bottom:4px; }
+.backup-card .desc{ font-size:11.5px; color:var(--steel); font-weight:600; margin-bottom:12px; line-height:1.5; }
+.field-row{
+  display:flex; gap:8px; background:var(--yellow-3); border-radius:var(--radius-sm);
+  padding:4px 4px 4px 12px; align-items:center; margin-bottom:4px;
+}
+.field-row input{
+  flex:1; background:none; border:none; font-size:13px; font-weight:700; color:var(--denim-2); padding:9px 0;
+}
+.field-row input::placeholder{ color:var(--steel); font-weight:600; }
+.field-btn{
+  background:var(--denim-1); color:var(--white); border:none; border-radius:999px;
+  font-size:11.5px; font-weight:800; padding:10px 14px; flex-shrink:0;
+}
+
+/* ---- history ---- */
+.history-row{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--white); border:2px solid rgba(59,110,165,0.14);
+  border-radius:var(--radius-md); padding:13px 16px; margin-bottom:8px;
+}
+.history-row .name{ font-size:13.5px; font-weight:800; color:var(--ink); }
+.history-row .date{ font-size:11px; color:var(--steel); font-weight:600; margin-top:1px; }
+.history-row .amt{ font-family:var(--font-display); font-weight:700; color:var(--ok); font-size:14px; }
+
+/* ---- confirm sheet ---- */
+.sheet-overlay{
+  position:fixed; inset:0; background:rgba(20,40,63,0.45); z-index:50;
+  display:none; align-items:flex-end; justify-content:center;
+}
+.sheet-overlay.open{ display:flex; }
+.sheet{
+  width:100%; max-width:480px; background:var(--white);
+  border-radius:26px 26px 0 0; padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+  border-top:4px solid var(--denim-0);
+}
+.sheet-title{ font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--denim-2); margin-bottom:14px; }
+.sheet-row{ display:flex; justify-content:space-between; font-size:13px; font-weight:700; color:var(--denim-1); padding:8px 0; border-bottom:1px solid rgba(59,110,165,0.10); }
+.sheet-row:last-of-type{ border-bottom:none; }
+.terms-text{ font-size:12px; color:var(--steel); font-weight:600; line-height:1.7; margin-bottom:14px; }
+.terms-text h4{ font-family:var(--font-display); font-size:14px; color:var(--denim-2); margin:14px 0 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><span class="goggle-dot"></span>MyVPN</div>
+  </div>
+
+  <!-- ===================== HOME ===================== -->
+  <div class="tab-panel current" data-panel="home">
+    <div class="status-card">
+      <div class="goggle-wrap">
+        <div class="goggle pulse"><div class="pupil"></div></div>
+        <div class="goggle-bridge"></div>
+        <div class="goggle pulse"><div class="pupil"></div></div>
+      </div>
+      <div class="expiry" id="expiryText">Загрузка…</div>
+      <div class="sub-line" id="subLine">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">на связи</span>
+      </div>
+      <div class="progress-row">
+        <div class="progress-labels">
+          <span id="daysLeftLabel">— дней осталось</span>
+          <span id="periodLabel">из 30</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="num" id="trafficVal">0</div>
+          <div class="lbl">ГБ трафика</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="devicesVal">1</div>
+          <div class="lbl">устройств</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="pingVal">24</div>
+          <div class="lbl">мс пинг</div>
+        </div>
+      </div>
+      <button class="cta-primary" id="renewBtn">
+        <span>⚡ Продлить подписку</span>
+        <span class="price" id="priceTag">от 249 ₽</span>
+      </button>
+      <button class="cta-secondary" id="setupBtn">🔧 Установка и настройка</button>
+    </div>
+
+    <div class="promo" id="promoBlock">
+      <div class="badge">🍌</div>
+      <div class="body">
+        <div class="txt"><b>Банана-выгода!</b> Тариф на 3 устройства всего за 299 ₽ — доплата 50 ₽, а гаджетов в 3 раза больше.</div>
+        <button class="promo-btn" id="promoBtn">Взять тариф побольше</button>
+      </div>
+    </div>
+
+    <div class="section-label">Ваши устройства</div>
+    <div id="deviceList">
+      <div class="device-row">
+        <div class="left">
+          <div class="ico">📱</div>
+          <div>
+            <div class="name">iPhone 15</div>
+            <div class="sub">Подключено 2 часа назад</div>
+          </div>
+        </div>
+        <div class="status-chip">В сети</div>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <div class="label">Сервер</div>
+        <div class="value" id="serverTile">Европа</div>
+      </div>
+      <div class="tile">
+        <div class="label">Бонус за друга</div>
+        <div class="value">+3 дня</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <div class="tab-panel" data-panel="settings">
+    <div class="section-label" style="margin-top:6px;">Сервер подключения</div>
+    <div class="chip-row" id="serverChips">
+      <button class="chip active" data-server="Европа">🇪🇺 Европа</button>
+      <button class="chip" data-server="США">🇺🇸 США</button>
+      <button class="chip" data-server="Азия">🇸🇬 Азия</button>
+    </div>
+
+    <div class="section-label">Параметры</div>
+    <div class="switch-row">
+      <div>
+        <div class="txt">Автоподключение</div>
+        <div class="sub">Включать VPN при запуске телефона</div>
+      </div>
+      <button class="switch on" data-switch="autoconnect"></button>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="txt">Уведомления</div>
+        <div class="sub">Напоминания об окончании подписки</div>
+      </div>
+      <button class="switch on" data-switch="notify"></button>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="txt">Экономия трафика</div>
+        <div class="sub">Сжатие данных на медленном интернете</div>
+      </div>
+      <button class="switch" data-switch="saver"></button>
+    </div>
+
+    <div class="section-label">Ваши устройства</div>
+    <div id="settingsDeviceList">
+      <div class="device-row">
+        <div class="left">
+          <div class="ico">📱</div>
+          <div>
+            <div class="name">iPhone 15</div>
+            <div class="sub">Подключено 2 часа назад</div>
+          </div>
+        </div>
+        <button class="kick-btn" data-action="kick-device">Отключить</button>
+      </div>
+    </div>
+    <button class="cta-secondary" id="downloadConfigBtn" style="margin-top:8px;">📄 Скачать конфиг</button>
+  </div>
+
+  <!-- ===================== PROFILE ===================== -->
+  <div class="tab-panel" data-panel="profile">
+    <div class="avatar-block">
+      <div class="avatar" id="avatarInitial">?</div>
+      <div class="avatar-name" id="profileName">Гость</div>
+      <div class="avatar-sub" id="profileUsername">&nbsp;</div>
+    </div>
+
+    <div class="ref-box">
+      <div class="lead">👥 Пригласи друга — получи +3 дня бесплатно</div>
+      <div class="ref-link">
+        <span id="refLinkText">t.me/MyVPNBot?start=ref_...</span>
+        <button class="copy-btn" id="copyRefBtn">Копировать</button>
+      </div>
+      <button class="share-btn" id="shareRefBtn">Отправить другу</button>
+    </div>
+
+    <div class="tiles" style="margin-bottom:16px;">
+      <div class="tile">
+        <div class="label">Статус</div>
+        <div class="value" id="profileStatusTile">Активна</div>
+      </div>
+      <div class="tile">
+        <div class="label">Приглашено друзей</div>
+        <div class="value">0</div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:0;">Настройки профиля</div>
+    <div class="menu-list">
+      <button class="menu-item" data-open="payments">
+        <div class="ico">💳</div>
+        <div class="txt"><div class="title">Способы оплаты</div><div class="sub">Настройка способов оплаты</div></div>
+        <div class="chev">›</div>
+      </button>
+      <button class="menu-item" data-open="history">
+        <div class="ico">🧾</div>
+        <div class="txt"><div class="title">История операций</div><div class="sub">Список ваших транзакций</div></div>
+        <div class="chev">›</div>
+      </button>
+      <button class="menu-item" data-open="backup">
+        <div class="ico">🛡️</div>
+        <div class="txt"><div class="title">Сохранение доступа</div><div class="sub">На случай блокировки Telegram</div></div>
+        <div class="chev">›</div>
+      </button>
+    </div>
+
+    <div class="section-label">Поддержка</div>
+    <div class="menu-list">
+      <button class="menu-item" data-open="setup" data-other-device="1">
+        <div class="ico">📲</div>
+        <div class="txt"><div class="title">Установка на другом устройстве</div><div class="sub">Подробная инструкция для установки</div></div>
+        <div class="chev">›</div>
+      </button>
+      <button class="menu-item" id="profileSupportBtn">
+        <div class="ico">💬</div>
+        <div class="txt"><div class="title">Связаться с поддержкой</div><div class="sub">Решение проблем онлайн</div></div>
+        <div class="chev">›</div>
+      </button>
+      <button class="menu-item" data-open="terms">
+        <div class="ico">📄</div>
+        <div class="txt"><div class="title">Пользовательское соглашение</div><div class="sub">Соглашения и правила сервиса</div></div>
+        <div class="chev">›</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== SUPPORT ===================== -->
+  <div class="tab-panel" data-panel="support">
+    <div class="section-label" style="margin-top:6px;">Частые вопросы</div>
+    <div class="faq-item">
+      <button class="faq-q"><span>Как подключить VPN на телефоне?</span><span class="arrow">▾</span></button>
+      <div class="faq-a">Скачайте конфиг в разделе «Настройки», откройте приложение WireGuard и импортируйте файл — подключение начнётся автоматически.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q"><span>Почему упала скорость?</span><span class="arrow">▾</span></button>
+      <div class="faq-a">Попробуйте сменить сервер в «Настройках» на другой регион — иногда ближайший сервер загружен сильнее остальных.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q"><span>Как продлить подписку?</span><span class="arrow">▾</span></button>
+      <div class="faq-a">На главном экране нажмите «Продлить подписку», выберите срок и количество устройств, затем оплатите удобным способом.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q"><span>Могу ли я вернуть деньги?</span><span class="arrow">▾</span></button>
+      <div class="faq-a">Да, если оплата не активировалась в течение 30 минут — напишите в поддержку, мы разберёмся и вернём средства.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q"><span>Что делать, если Telegram заблокируют?</span><span class="arrow">▾</span></button>
+      <div class="faq-a">В разделе «Профиль → Сохранение доступа» сохраните ссылку на личный кабинет и оставьте почту — так вы не потеряете доступ к подписке.</div>
+    </div>
+    <button class="support-cta" id="contactSupportBtn">💬 Написать в поддержку</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">Скопировано!</div>
+
+<div class="bottom-nav">
+  <button class="nav-btn active" data-tab="home">
+    <span class="icon-wrap">🏠<i class="steam st1"></i><i class="steam st2"></i><i class="steam st3"></i></span>
+  </button>
+  <button class="nav-btn" data-tab="settings"><span class="gear-icon">⚙️</span></button>
+  <button class="nav-btn" data-tab="profile">
+    <span class="icon-wrap">👤<i class="glasses">🕶️</i></span>
+  </button>
+  <button class="nav-btn" data-tab="support">
+    <span class="icon-wrap">🎧<i class="note nt1">♪</i><i class="note nt2">♫</i><i class="note nt3">♪</i></span>
+  </button>
+</div>
+
+<!-- ===================== SUBPAGE: BUY / PLAN ===================== -->
+<div class="subpage" id="page-buy">
+  <div class="subpage-inner">
+    <div class="subpage-topbar">
+      <button class="subpage-back" data-close-page>‹</button>
+      <div>
+        <div class="subpage-title">Покупка подписки</div>
+        <div class="subpage-sub">Выберите срок и количество устройств</div>
+      </div>
+    </div>
+
+    <div class="stepper-row">
+      <div>
+        <div class="txt">Устройства</div>
+        <div class="sub">Одновременно в подписке</div>
+      </div>
+      <div class="stepper">
+        <button id="devMinus">−</button>
+        <div class="val" id="devCount">1</div>
+        <button id="devPlus">+</button>
+      </div>
+    </div>
+
+    <div class="plan-grid" id="planGrid">
+      <button class="plan-card active" data-months="1">
+        <div class="period">1 месяц</div>
+        <div class="price" id="price1">249 ₽</div>
+        <div class="permonth">в месяц</div>
+      </button>
+      <button class="plan-card" data-months="3">
+        <span class="save-badge">-18%</span>
+        <div class="period">3 месяца</div>
+        <div class="price" id="price3">629 ₽</div>
+        <div class="permonth" id="perMonth3">205 ₽ в месяц</div>
+      </button>
+    </div>
+
+    <div class="section-label" style="margin-top:6px;">Способ оплаты</div>
+    <button class="pay-method-row active" data-pay="sbp">
+      <div class="left">🏦 СБП</div>
+      <div class="radio"></div>
+    </button>
+    <button class="pay-method-row" data-pay="card">
+      <div class="left">💳 Банковская карта</div>
+      <div class="radio"></div>
+    </button>
+    <button class="pay-method-row" data-pay="stars">
+      <div class="left">⭐ Telegram Stars</div>
+      <div class="radio"></div>
+    </button>
+
+    <div class="total-box">
+      <div>
+        <div class="lbl">Итого к оплате</div>
+      </div>
+      <div class="amount" id="totalAmount">249 ₽</div>
+    </div>
+
+    <button class="cta-primary" id="goToPayBtn" style="margin-bottom:0;">
+      <span>Оплатить</span>
+      <span class="price" id="payBtnAmount">249 ₽</span>
+    </button>
+  </div>
+</div>
+
+<!-- ===================== SUBPAGE: SETUP ===================== -->
+<div class="subpage" id="page-setup">
+  <div class="subpage-inner">
+    <div class="subpage-topbar">
+      <button class="subpage-back" data-close-page>‹</button>
+      <div>
+        <div class="subpage-title" id="setupTitle">Настройка на iOS</div>
+        <div class="subpage-sub">3 простых шага — пара минут</div>
+      </div>
+    </div>
+
+    <div class="platform-tabs" id="platformTabs">
+      <button class="platform-tab active" data-platform="ios">🍎 iOS</button>
+      <button class="platform-tab" data-platform="android">🤖 Android</button>
+      <button class="platform-tab" data-platform="windows">💻 Windows</button>
+      <button class="platform-tab" data-platform="mac">🖥️ macOS</button>
+    </div>
+
+    <div class="setup-icon-wrap"><div class="setup-icon" id="setupIcon">🔌</div></div>
+
+    <div id="setupSteps">
+      <div class="step-row"><div class="num">1</div><div class="txt">Скачайте и установите приложение WireGuard из App Store.</div></div>
+      <div class="step-row"><div class="num">2</div><div class="txt">Нажмите «Скачать конфиг» в разделе «Настройки» этого приложения.</div></div>
+      <div class="step-row"><div class="num">3</div><div class="txt">Откройте файл конфигурации в WireGuard и включите тумблер подключения.</div></div>
+    </div>
+
+    <button class="cta-primary" id="startSetupBtn" style="margin-top:8px;">
+      <span>Начать настройку на этом устройстве</span>
+    </button>
+    <button class="cta-secondary" id="otherDeviceBtn">Установить на другом устройстве</button>
+  </div>
+</div>
+
+<!-- ===================== SUBPAGE: PAYMENTS ===================== -->
+<div class="subpage" id="page-payments">
+  <div class="subpage-inner">
+    <div class="subpage-topbar">
+      <button class="subpage-back" data-close-page>‹</button>
+      <div>
+        <div class="subpage-title">Способы оплаты</div>
+        <div class="subpage-sub">Сохранённые методы</div>
+      </div>
+    </div>
+    <div class="menu-list">
+      <div class="menu-item"><div class="ico">🏦</div><div class="txt"><div class="title">СБП</div><div class="sub">Без комиссии</div></div></div>
+      <div class="menu-item"><div class="ico">💳</div><div class="txt"><div class="title">Банковская карта</div><div class="sub">Visa, Mastercard, МИР</div></div></div>
+      <div class="menu-item"><div class="ico">⭐</div><div class="txt"><div class="title">Telegram Stars</div><div class="sub">Оплата внутри Telegram</div></div></div>
+    </div>
+    <button class="cta-secondary" id="addPayMethodBtn">➕ Добавить способ оплаты</button>
+  </div>
+</div>
+
+<!-- ===================== SUBPAGE: HISTORY ===================== -->
+<div class="subpage" id="page-history">
+  <div class="subpage-inner">
+    <div class="subpage-topbar">
+      <button class="subpage-back" data-close-page>‹</button>
+      <div>
+        <div class="subpage-title">История операций</div>
+        <div class="subpage-sub">Ваши транзакции</div>
+      </div>
+    </div>
+    <div id="historyList">
+      <div class="history-row"><div><div class="name">Продление на 1 месяц</div><div class="date">05.07.2026 · СБП</div></div><div class="amt">−249 ₽</div></div>
+      <div class="history-row"><div><div class="name">Бонус за приглашение друга</div><div class="date">28.06.2026</div></div><div class="amt">+3 дня</div></div>
+      <div class="history-row"><div><div class="name">Продление на 1 месяц</div><div class="date">05.06.2026 · Карта</div></div><div class="amt">−249 ₽</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SUBPAGE: BACKUP ACCESS ===================== -->
+<div class="subpage" id="page-backup">
+  <div class="subpage-inner">
+    <div class="subpage-topbar">
+      <button class="subpage-back" data-close-page>‹</button>
+      <div>
+        <div class="subpage-title">Сохранение доступа</div>
+        <div class="subpage-sub">На случай блокировки Telegram</div>
+      </div>
+    </div>
+
+    <div class="backup-card">
+      <div class="lead">📢 Подпишитесь на канал</div>
+      <div class="desc">Там появляются рабочие зеркала и важные объявления, если Telegram станет недоступен.</div>
+      <button class="cta-secondary" id="subChannelBtn">Подписаться на канал</button>
+    </div>
+
+    <div class="backup-card">
+      <div class="lead">📧 Оставьте e-mail</div>
+      <div class="desc">Мы будем на связи и пришлём ссылку на кабинет, даже если Telegram заблокируют.</div>
+      <div class="field-row">
+        <input type="email" id="backupEmailInput" placeholder="you@example.com">
+        <button class="field-btn" id="saveEmailBtn">Сохранить</button>
+      </div>
+    </div>
+
+    <div class="backup-card">
+      <div class="lead">🔗 Ссылка на личный кабинет</div>
+      <div class="desc">Откройте её в браузере, чтобы управлять подпиской без Telegram.</div>
+      <div class="ref-link" style="margin-bottom:0;">
+        <span id="cabinetLinkText">id.myvpn.app/••••••••</span>
+        <button class="copy-btn" id="copyCabinetBtn">Копировать</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SUBPAGE: TERMS ===================== -->
+<div class="subpage" id="page-terms">
+  <div class="subpage-inner">
+    <div class="subpage-topbar">
+      <button class="subpage-back" data-close-page>‹</button>
+      <div>
+        <div class="subpage-title">Пользовательское соглашение</div>
+        <div class="subpage-sub">Условия использования сервиса</div>
+      </div>
+    </div>
+    <div class="terms-text">
+      <h4>Оплата и возврат</h4>
+      Оплачивая подписку, вы соглашаетесь с тем, что доступ предоставляется сразу после зачисления средств. Возврат возможен, если оплата не активировалась в течение 30 минут — в этом случае напишите в поддержку.
+      <h4>Конфиденциальность</h4>
+      Мы не собираем и не храним данные о вашей онлайн-активности и не передаём их третьим лицам, кроме случаев, предусмотренных законодательством. Для защиты данных применяется современное шифрование.
+      <h4>Ограничения и гарантии</h4>
+      Сервис предоставляется без гарантий бесперебойной работы: скорость и стабильность зависят от внешних факторов — провайдеров, блокировок и особенностей сети.
+      <h4>Поддержка</h4>
+      По любым вопросам мы на связи в разделе «Поддержка» — отвечаем в течение рабочего дня.
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PAYMENT CONFIRM SHEET ===================== -->
+<div class="sheet-overlay" id="confirmSheet">
+  <div class="sheet">
+    <div class="sheet-title">Подтверждение оплаты</div>
+    <div class="sheet-row"><span>Подписка</span><span id="confirmPeriod">1 месяц</span></div>
+    <div class="sheet-row"><span>Количество устройств</span><span id="confirmDevices">1</span></div>
+    <div class="sheet-row"><span>Способ оплаты</span><span id="confirmMethod">СБП</span></div>
+    <div class="sheet-row"><span>Сумма</span><span id="confirmAmount">249 ₽</span></div>
+    <button class="cta-primary" id="confirmPayBtn" style="margin-top:16px; margin-bottom:8px;">
+      <span>Оплатить</span><span class="price" id="confirmBtnAmount">249 ₽</span>
+    </button>
+    <button class="cta-secondary" id="cancelPayBtn">Отмена</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const tg = window.Telegram ? window.Telegram.WebApp : null;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  function attachPressFeedback(el){
+    let active = false;
+    const press = () => { active = true; el.classList.add('is-pressed'); };
+    const release = () => { if(active){ active = false; el.classList.remove('is-pressed'); } };
+    el.addEventListener('pointerdown', press, {passive:true});
+    el.addEventListener('pointerup', release, {passive:true});
+    el.addEventListener('pointercancel', release, {passive:true});
+    el.addEventListener('pointerleave', release, {passive:true});
+  }
+  document.querySelectorAll('button, .tappable').forEach(attachPressFeedback);
+
+  const toastEl = document.getElementById('toast');
+  let toastTimer;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+  }
+
+  function copyText(text){
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(()=>{});
+    }
+  }
+
+  /* ---------- home status data ---------- */
+  const els = {
+    expiry: document.getElementById('expiryText'),
+    subLine: document.getElementById('subLine'),
+    statusText: document.getElementById('statusText'),
+    trafficVal: document.getElementById('trafficVal'),
+    devicesVal: document.getElementById('devicesVal'),
+    pingVal: document.getElementById('pingVal'),
+    priceTag: document.getElementById('priceTag'),
+    daysLeftLabel: document.getElementById('daysLeftLabel'),
+    periodLabel: document.getElementById('periodLabel'),
+    progressFill: document.getElementById('progressFill'),
+  };
+
+  function loadStatus(){
+    const fallback = {
+      active: true,
+      expires: '05.08.2026',
+      daysLeft: 21,
+      periodDays: 30,
+      trafficGb: 2.15,
+      devices: 1,
+      pingMs: 24,
+      pricePerMonth: 249,
+    };
+    try {
+      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+        const parsed = JSON.parse(decodeURIComponent(tg.initDataUnsafe.start_param));
+        return Object.assign(fallback, parsed);
+      }
+    } catch (e) { /* ignore malformed start_param, use fallback */ }
+    return fallback;
+  }
+
+  function render(d){
+    els.expiry.textContent = d.active ? `до ${d.expires}` : 'Подписка неактивна';
+    els.subLine.classList.toggle('offline', !d.active);
+    els.statusText.textContent = d.active ? 'на связи' : 'офлайн';
+    els.trafficVal.textContent = d.trafficGb;
+    els.devicesVal.textContent = d.devices;
+    els.pingVal.textContent = d.pingMs;
+    els.priceTag.textContent = `от ${d.pricePerMonth} ₽`;
+    els.daysLeftLabel.textContent = `${d.daysLeft} дней осталось`;
+    els.periodLabel.textContent = `из ${d.periodDays}`;
+    const pct = Math.max(0, Math.min(100, (d.daysLeft / d.periodDays) * 100));
+    els.progressFill.style.width = pct + '%';
+    document.getElementById('profileStatusTile').textContent = d.active ? 'Активна' : 'Неактивна';
+  }
+  render(loadStatus());
+
+  /* ---------- profile info from Telegram ---------- */
+  let refUid = '000000';
+  (function fillProfile(){
+    const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    const name = user ? [user.first_name, user.last_name].filter(Boolean).join(' ') : 'Гость';
+    const username = user && user.username ? '@' + user.username : '';
+    document.getElementById('profileName').textContent = name || 'Гость';
+    document.getElementById('profileUsername').textContent = username;
+    document.getElementById('avatarInitial').textContent = (name || 'Г').trim()[0].toUpperCase();
+    refUid = user ? user.id : '000000';
+    const link = `t.me/MyVPNBot?start=ref_${refUid}`;
+    document.getElementById('refLinkText').textContent = link;
+    window.__refLink = 'https://' + link;
+    document.getElementById('cabinetLinkText').textContent = `id.myvpn.app/${refUid}`;
+  })();
+
+  /* ---------- tab navigation ---------- */
+  const panels = document.querySelectorAll('.tab-panel');
+  const navBtns = document.querySelectorAll('.nav-btn');
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-tab');
+      if (btn.classList.contains('active')) return;
+      navBtns.forEach(b => b.classList.toggle('active', b === btn));
+      panels.forEach(p => {
+        if (p.getAttribute('data-panel') === target) {
+          p.classList.add('current', 'enter');
+          setTimeout(() => p.classList.remove('enter'), 460);
+        } else {
+          p.classList.remove('current');
+        }
+      });
+    });
+  });
+
+  /* ---------- home actions ---------- */
+  document.getElementById('renewBtn').addEventListener('click', () => openPage('buy'));
+  document.getElementById('promoBtn').addEventListener('click', () => {
+    openPage('buy');
+    setDeviceCount(3);
+  });
+  document.getElementById('setupBtn').addEventListener('click', () => openPage('setup'));
+
+  /* ---------- server chips ---------- */
+  document.getElementById('serverChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.querySelectorAll('#serverChips .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    document.getElementById('serverTile').textContent = chip.getAttribute('data-server');
+    showToast('Сервер изменён');
+  });
+
+  /* ---------- switches ---------- */
+  document.querySelectorAll('.switch[data-switch]').forEach(sw => {
+    sw.addEventListener('click', () => sw.classList.toggle('on'));
+  });
+
+  /* ---------- kick device ---------- */
+  document.querySelectorAll('[data-action="kick-device"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.device-row');
+      if (row) row.remove();
+      showToast('Устройство отключено');
+    });
+  });
+
+  document.getElementById('downloadConfigBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'download_config'}));
+    showToast('Конфиг отправлен');
+  });
+
+  /* ---------- profile: referral ---------- */
+  document.getElementById('copyRefBtn').addEventListener('click', () => {
+    copyText(window.__refLink || '');
+    showToast('Ссылка скопирована');
+  });
+  document.getElementById('shareRefBtn').addEventListener('click', () => {
+    const url = window.__refLink || '';
+    if (tg && tg.openTelegramLink) {
+      tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}`);
+    } else {
+      copyText(url);
+      showToast('Ссылка скопирована');
+    }
+  });
+
+  /* ---------- FAQ accordion ---------- */
+  document.querySelectorAll('.faq-item').forEach(item => {
+    item.querySelector('.faq-q').addEventListener('click', () => {
+      const wasOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+      if (!wasOpen) item.classList.add('open');
+    });
+  });
+
+  document.getElementById('contactSupportBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'contact_support'}));
+  });
+  document.getElementById('profileSupportBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'contact_support'}));
+  });
+
+  /* ================= SUBPAGES ================= */
+  const subpages = document.querySelectorAll('.subpage');
+  function openPage(name, opts){
+    const page = document.getElementById('page-' + name);
+    if (!page) return;
+    subpages.forEach(p => p.classList.remove('open'));
+    page.classList.add('open');
+    if (name === 'setup' && opts && opts.otherDevice) {
+      document.getElementById('startSetupBtn').style.display = 'none';
+      document.getElementById('otherDeviceBtn').textContent = 'Отправить ссылку на установку';
+    } else if (name === 'setup') {
+      document.getElementById('startSetupBtn').style.display = 'flex';
+      document.getElementById('otherDeviceBtn').textContent = 'Установить на другом устройстве';
+    }
+  }
+  function closePage(){ subpages.forEach(p => p.classList.remove('open')); }
+  document.querySelectorAll('[data-close-page]').forEach(btn => btn.addEventListener('click', closePage));
+
+  document.querySelectorAll('.menu-item[data-open]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-open');
+      openPage(name, { otherDevice: btn.hasAttribute('data-other-device') });
+    });
+  });
+
+  /* ---------- BUY: device stepper + plans + payment ---------- */
+  let devCount = 1;
+  const BASE_PRICE_1M = 249;
+  const BASE_PRICE_3M = 629;
+  let selectedMonths = 1;
+  let selectedPay = 'sbp';
+  const payLabels = { sbp: 'СБП', card: 'Банковская карта', stars: 'Telegram Stars' };
+
+  function extraDeviceFee(months, devices){
+    // +50₽ per extra device per month bought (simple, transparent pricing)
+    const extra = Math.max(0, devices - 1);
+    return extra * 50 * months;
+  }
+
+  function computeTotal(){
+    const base = selectedMonths === 1 ? BASE_PRICE_1M : BASE_PRICE_3M;
+    return base + extraDeviceFee(selectedMonths, devCount);
+  }
+
+  function refreshBuyUI(){
+    document.getElementById('devCount').textContent = devCount;
+    document.getElementById('devMinus').disabled = devCount <= 1;
+    document.getElementById('devPlus').disabled = devCount >= 5;
+    const total = computeTotal();
+    document.getElementById('totalAmount').textContent = total + ' ₽';
+    document.getElementById('payBtnAmount').textContent = total + ' ₽';
+  }
+  function setDeviceCount(n){
+    devCount = Math.max(1, Math.min(5, n));
+    refreshBuyUI();
+  }
+  document.getElementById('devMinus').addEventListener('click', () => setDeviceCount(devCount - 1));
+  document.getElementById('devPlus').addEventListener('click', () => setDeviceCount(devCount + 1));
+
+  document.getElementById('planGrid').addEventListener('click', (e) => {
+    const card = e.target.closest('.plan-card');
+    if (!card) return;
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    selectedMonths = parseInt(card.getAttribute('data-months'), 10);
+    refreshBuyUI();
+  });
+
+  document.querySelectorAll('.pay-method-row').forEach(row => {
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.pay-method-row').forEach(r => r.classList.remove('active'));
+      row.classList.add('active');
+      selectedPay = row.getAttribute('data-pay');
+    });
+  });
+
+  refreshBuyUI();
+
+  document.getElementById('goToPayBtn').addEventListener('click', () => {
+    document.getElementById('confirmPeriod').textContent = selectedMonths === 1 ? '1 месяц' : '3 месяца';
+    document.getElementById('confirmDevices').textContent = devCount;
+    document.getElementById('confirmMethod').textContent = payLabels[selectedPay];
+    const total = computeTotal();
+    document.getElementById('confirmAmount').textContent = total + ' ₽';
+    document.getElementById('confirmBtnAmount').textContent = total + ' ₽';
+    document.getElementById('confirmSheet').classList.add('open');
+  });
+  document.getElementById('cancelPayBtn').addEventListener('click', () => {
+    document.getElementById('confirmSheet').classList.remove('open');
+  });
+  document.getElementById('confirmPayBtn').addEventListener('click', () => {
+    document.getElementById('confirmSheet').classList.remove('open');
+    if (tg) tg.sendData(JSON.stringify({
+      action: 'buy',
+      months: selectedMonths,
+      devices: devCount,
+      pay_method: selectedPay,
+      amount: computeTotal(),
+    }));
+    closePage();
+    showToast('Оплата отправлена на обработку');
+  });
+
+  /* ---------- SETUP: platform switching ---------- */
+  const setupContent = {
+    ios: {
+      title: 'Настройка на iOS', icon: '🍎',
+      steps: [
+        'Скачайте и установите приложение WireGuard из App Store.',
+        'Нажмите «Скачать конфиг» в разделе «Настройки» этого приложения.',
+        'Откройте файл конфигурации в WireGuard и включите тумблер подключения.',
+      ],
+    },
+    android: {
+      title: 'Настройка на Android', icon: '🤖',
+      steps: [
+        'Скачайте и установите приложение WireGuard из Google Play.',
+        'Нажмите «Скачать конфиг» в разделе «Настройки» этого приложения.',
+        'Импортируйте файл в WireGuard и включите подключение.',
+      ],
+    },
+    windows: {
+      title: 'Настройка на Windows', icon: '💻',
+      steps: [
+        'Скачайте клиент WireGuard для Windows с официального сайта.',
+        'Нажмите «Скачать конфиг» в разделе «Настройки» этого приложения.',
+        'Импортируйте файл через «Добавить туннель» и активируйте его.',
+      ],
+    },
+    mac: {
+      title: 'Настройка на macOS', icon: '🖥️',
+      steps: [
+        'Установите WireGuard из Mac App Store.',
+        'Нажмите «Скачать конфиг» в разделе «Настройки» этого приложения.',
+        'Импортируйте туннель и включите подключение в строке меню.',
+      ],
+    },
+  };
+  document.getElementById('platformTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.platform-tab');
+    if (!tab) return;
+    document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const data = setupContent[tab.getAttribute('data-platform')];
+    document.getElementById('setupTitle').textContent = data.title;
+    document.getElementById('setupIcon').textContent = data.icon;
+    document.getElementById('setupSteps').innerHTML = data.steps
+      .map((s, i) => `<div class="step-row"><div class="num">${i+1}</div><div class="txt">${s}</div></div>`)
+      .join('');
+  });
+  document.getElementById('startSetupBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'setup'}));
+    showToast('Конфиг отправлен на это устройство');
+  });
+  document.getElementById('otherDeviceBtn').addEventListener('click', () => {
+    const link = `https://t.me/MyVPNBot?start=setup_${refUid}`;
+    copyText(link);
+    showToast('Ссылка для установки скопирована');
+  });
+
+  /* ---------- PAYMENTS page ---------- */
+  document.getElementById('addPayMethodBtn').addEventListener('click', () => {
+    if (tg) tg.sendData(JSON.stringify({action: 'add_payment_method'}));
+  });
+
+  /* ---------- BACKUP ACCESS ---------- */
+  document.getElementById('subChannelBtn').addEventListener('click', () => {
+    if (tg && tg.openTelegramLink) tg.openTelegramLink('https://t.me/MyVPNChannel');
+    showToast('Открываем канал…');
+  });
+  document.getElementById('saveEmailBtn').addEventListener('click', () => {
+    const val = document.getElementById('backupEmailInput').value.trim();
+    if (!val || !val.includes('@')) { showToast('Введите корректный e-mail'); return; }
+    if (tg) tg.sendData(JSON.stringify({action: 'save_backup_email', email: val}));
+    showToast('Почта сохранена');
+  });
+  document.getElementById('copyCabinetBtn').addEventListener('click', () => {
+    copyText('https://' + document.getElementById('cabinetLinkText').textContent);
+    showToast('Ссылка скопирована');
+  });
+
+  document.querySelectorAll('button, .tappable').forEach(el => {
+    if (!el.dataset.pressBound) { attachPressFeedback(el); el.dataset.pressBound = '1'; }
+  });
+})();
+</script>
+</body>
+</html>
