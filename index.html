@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>MyVPN</title>
+<title>MinionVPN</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -823,7 +823,7 @@ animation-iteration-count: infinite;
 <body>
 <div class="app">
 <div class="topbar">
-<div class="brand"><span class="goggle-dot"></span>MyVPN</div>
+<div class="brand"><span class="goggle-dot"></span>MinionVPN</div>
 </div>
 
 <!-- ===================== HOME ===================== -->
@@ -961,7 +961,7 @@ animation-iteration-count: infinite;
 <div class="ref-box">
 <div class="lead">👥 Пригласи друга — получи +3 дня бесплатно</div>
 <div class="ref-link">
-<span id="refLinkText">t.me/MyVPNBot?start=ref_...</span>
+<span id="refLinkText">t.me/MinionVPNBot?start=ref_...</span>
 <button class="copy-btn" id="copyRefBtn">Копировать</button>
 </div>
 <button class="share-btn" id="shareRefBtn">Отправить другу</button>
@@ -1262,7 +1262,7 @@ animation-iteration-count: infinite;
 <div class="ref-box">
 <div class="lead">🎁 За каждого приглашённого друга вы получите 15% бонусных дней от всех его пополнений. Например, если ваш друг продлит подписку на 1 год, вы получите 55 дней.</div>
 <div class="ref-link">
-<span id="refLinkText2">t.me/MyVPNBot?start=ref_...</span>
+<span id="refLinkText2">t.me/MinionVPNBot?start=ref_...</span>
 <button class="copy-btn" id="copyRefBtn2">Копировать</button>
 </div>
 <button class="share-btn" id="shareRefBtn2">Отправить другу</button>
@@ -1326,7 +1326,7 @@ animation-iteration-count: infinite;
 <div id="supportProfileList" style="margin-bottom:18px;">
 <div class="pay-method-row active" style="justify-content:flex-start; gap:12px; cursor:default;">
 <div class="radio"></div>
-<div class="left" style="font-size:14px;">MyVPN</div>
+<div class="left" style="font-size:14px;">MinionVPN</div>
 </div>
 </div>
 
@@ -1371,7 +1371,7 @@ animation-iteration-count: infinite;
 
 <div class="terms-text">
 <h4>О сервисе</h4>
-MyVPN использует облачные технологии для обеспечения защищённого сетевого соединения пользователей. Сервис способствует защите пользовательской информации за счёт применения технологий шифрования и обработки сетевых метаданных. Используемые сетевые адреса могут одновременно применяться множеством пользователей, что повышает уровень конфиденциальности и затрудняет определение характера пользовательской активности. Мы не изменяем содержимое пользовательского трафика и не вмешиваемся в него. Мы не оказываем услуги по настройке сетевого и клиентского оборудования. Используемые приложения и клиентские программы не принадлежат нам. Мы можем предоставлять рекомендации и справочную информацию для самостоятельной настройки.
+MinionVPN использует облачные технологии для обеспечения защищённого сетевого соединения пользователей. Сервис способствует защите пользовательской информации за счёт применения технологий шифрования и обработки сетевых метаданных. Используемые сетевые адреса могут одновременно применяться множеством пользователей, что повышает уровень конфиденциальности и затрудняет определение характера пользовательской активности. Мы не изменяем содержимое пользовательского трафика и не вмешиваемся в него. Мы не оказываем услуги по настройке сетевого и клиентского оборудования. Используемые приложения и клиентские программы не принадлежат нам. Мы можем предоставлять рекомендации и справочную информацию для самостоятельной настройки.
 
 <h4>Демо-период</h4>
 Каждому пользователю предоставляется демо-период продолжительностью два дня с момента авторизации в приложении.
@@ -1401,7 +1401,7 @@ MyVPN использует облачные технологии для обес
 Сервис предоставляется на условиях «как есть» и «по мере доступности». Мы вправе изменять его, обновлять программное обеспечение и функционал. Мы не несём ответственности за работу сторонних сервисов, ресурсов, сайтов, приложений и сетевой инфраструктуры, а также за любые последствия, связанные с использованием сервиса. Пользователь самостоятельно принимает решение об использовании сервиса и несёт личную ответственность за его использование.
 
 <h4>Условия использования</h4>
-Сервис MyVPN не предназначен для обхода блокировок. Используя MyVPN, вы автоматически соглашаетесь с настоящими условиями использования и обязуетесь не нарушать местное законодательство.
+Сервис MinionVPN не предназначен для обхода блокировок. Используя MinionVPN, вы автоматически соглашаетесь с настоящими условиями использования и обязуетесь не нарушать местное законодательство.
 </div>
 </div>
 </div>
@@ -1432,8 +1432,9 @@ var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : nu
 if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
 
 /* ================= backend integration (bot/api.py) ================= */
-// TODO: set this to your real HTTPS API domain once deployed.
-var API_BASE = "https://api.yourdomain.com";
+// Temporary dev tunnel (pyngrok) -> local uvicorn on :8000.
+// Replace with your real HTTPS domain once you deploy for production.
+var API_BASE = "https://junior-protozoan-width.ngrok-free.dev";
 
 function apiCall(path, options){
   options = options || {};
@@ -1441,6 +1442,7 @@ function apiCall(path, options){
     {
       "Content-Type": "application/json",
       "X-Telegram-Init-Data": tg ? tg.initData : "", // signed by Telegram, verified server-side
+      "ngrok-skip-browser-warning": "true", // skip ngrok's free-tier interstitial page
     },
     options.headers || {}
   );
@@ -1547,7 +1549,7 @@ var state = {
   server: 'Европа',
   invitedFriends: 0,
   refDays: 0,
-  refLink: 't.me/MyVPNBot?start=ref_' + Math.random().toString(36).slice(2,8),
+  refLink: 't.me/MinionVPNBot?start=ref_' + Math.random().toString(36).slice(2,8),
   history: [
     {name:'1 месяц, 1 устройство', date:'05.06.2026', amount:'249 ₽'},
     {name:'3 месяца, 1 устройство', date:'05.03.2026', amount:'629 ₽'},
@@ -1812,10 +1814,10 @@ function copyText(text){
 function shareReferral(){
   var link = 'https://' + state.refLink;
   if(tg && tg.openTelegramLink){
-    try{ tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Присоединяйся к MyVPN!')); return; }catch(e){}
+    try{ tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Присоединяйся к MinionVPN!')); return; }catch(e){}
   }
   if(navigator.share){
-    navigator.share({title:'MyVPN', text:'Присоединяйся к MyVPN!', url: link}).catch(function(){});
+    navigator.share({title:'MinionVPN', text:'Присоединяйся к MinionVPN!', url: link}).catch(function(){});
   } else {
     copyText(link);
   }
@@ -1965,7 +1967,7 @@ function confirmOpenLink(url){
 }
 document.getElementById('setupAddSubBtn').addEventListener('click', function(){
   var subLink = 'https://sub.myvpn.app/s/' + Math.random().toString(36).slice(2,14);
-  confirmOpenLink('vpnclient://add/' + subLink + '#MyVPN');
+  confirmOpenLink('vpnclient://add/' + subLink + '#MinionVPN');
 });
 document.getElementById('setupOpenHelpBtn').addEventListener('click', function(){
   confirmOpenLink(platformHelp[currentPlatform] || platformHelp.Other);
