@@ -1431,6 +1431,91 @@ MyVPN использует облачные технологии для обес
 var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
 
+/* ================= backend integration (bot/api.py) ================= */
+// TODO: set this to your real HTTPS API domain once deployed.
+var API_BASE = "https://api.yourdomain.com";
+
+function apiCall(path, options){
+  options = options || {};
+  var headers = Object.assign(
+    {
+      "Content-Type": "application/json",
+      "X-Telegram-Init-Data": tg ? tg.initData : "", // signed by Telegram, verified server-side
+    },
+    options.headers || {}
+  );
+  return fetch(API_BASE + path, Object.assign({}, options, { headers: headers }))
+    .then(function(res){
+      return res.text().then(function(bodyText){
+        var contentType = res.headers.get("content-type") || "";
+        var parsed = bodyText;
+        if(contentType.indexOf("application/json") !== -1){
+          try{ parsed = bodyText ? JSON.parse(bodyText) : null; }catch(e){ parsed = bodyText; }
+        }
+        if(!res.ok){
+          var err = new Error("API " + path + " failed: " + res.status + " " + bodyText);
+          err.status = res.status;
+          err.body = parsed;
+          throw err;
+        }
+        return parsed;
+      });
+    });
+}
+
+// Main screen: load subscription status. me.status = { expires, active, phones, is_test }
+function loadStatus(){
+  return apiCall("/api/me").then(function(me){
+    return (me && me.status) || me;
+  });
+}
+
+// "Скачать конфиг" button
+function downloadConfig(){
+  return apiCall("/api/config").then(function(configText){
+    var blob = new Blob([configText], { type: "text/plain" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "UltimaVPN.conf";
+    a.click();
+    return configText;
+  });
+}
+
+// "Получить тест (24ч)" button
+function activateTest(){
+  return apiCall("/api/test", { method: "POST" });
+}
+
+// Buy flow: open YooMoney's payment page (tg.openLink keeps the user inside
+// Telegram's browser) and poll for confirmation via /api/check_payment.
+function buySubscription(days, devices){
+  return apiCall("/api/buy", {
+    method: "POST",
+    body: JSON.stringify({ days: days, devices: devices }),
+  }).then(function(pay){
+    if(tg && tg.openLink){ try{ tg.openLink(pay.url); }catch(e){} }
+
+    var attempts = 0;
+    var maxAttempts = 10;
+    function poll(){
+      return new Promise(function(resolve){ setTimeout(resolve, 3000); }).then(function(){
+        return apiCall("/api/check_payment", {
+          method: "POST",
+          body: JSON.stringify({ label: pay.label, days: days }),
+        }).then(function(result){
+          attempts++;
+          if(result && result.paid){ return true; }
+          if(attempts >= maxAttempts){ return false; }
+          return poll();
+        });
+      });
+    }
+    return poll();
+  });
+}
+
 /* ---------- toast ---------- */
 var toastEl = document.getElementById('toast');
 var toastTimer = null;
@@ -1587,6 +1672,29 @@ function renderHome(){
 }
 renderHome();
 
+/* ---------- pull real subscription status from the backend ---------- */
+function applyStatus(status){
+  if(!status) return;
+  if(status.expires){
+    var exp = new Date(status.expires);
+    if(!isNaN(exp.getTime())){ state.expiryDate = exp; }
+  }
+  if(Array.isArray(status.phones)){ state.devices = status.phones.length; }
+  else if(typeof status.devices === 'number'){ state.devices = status.devices; }
+  state.active = !!status.active;
+  state.isTest = !!status.is_test;
+}
+function refreshStatusFromServer(){
+  return loadStatus().then(function(status){
+    applyStatus(status);
+    renderHome();
+  }).catch(function(err){
+    // Keep showing the local/demo state if the backend isn't reachable yet.
+    console.warn('loadStatus failed, showing local state:', err);
+  });
+}
+refreshStatusFromServer();
+
 /* Telegram user info */
 (function(){
   try{
@@ -1687,6 +1795,9 @@ var downloadBtn = document.getElementById('downloadConfigBtn');
 if(downloadBtn){
   downloadBtn.addEventListener('click', function(){
     showToast('Конфигурация скачивается…');
+    downloadConfig().catch(function(){
+      showToast('Нет активной подписки');
+    });
   });
 }
 
@@ -1770,16 +1881,31 @@ document.getElementById('sheetCancelBtn').addEventListener('click', function(){
 document.getElementById('sheetPayBtn').addEventListener('click', function(){
   document.getElementById('confirmSheetOverlay').classList.remove('open');
   var months = parseInt(selectedPeriodCard.getAttribute('data-period'), 10);
-  state.expiryDate = new Date();
-  state.expiryDate.setMonth(state.expiryDate.getMonth() + months);
-  state.periodDays = months*30;
-  state.daysLeft = state.periodDays;
-  state.devices = buyDevices;
-  renderHome();
-  state.history.unshift({name: months+' мес., '+buyDevices+' устр.', date: fmtDate(new Date()), amount: document.getElementById('sheetAmount').textContent});
-  showToast('Оплата принята — подписка продлена');
-  celebratePurchase();
-  closeSubpage(document.getElementById('subpage-buy'));
+  var days = months * 30;
+  var amountText = document.getElementById('sheetAmount').textContent;
+  var payBtn = document.getElementById('sheetPayBtn');
+  payBtn.setAttribute('disabled', 'true');
+  showToast('Открываем оплату…');
+
+  buySubscription(days, buyDevices).then(function(paid){
+    payBtn.removeAttribute('disabled');
+    if(!paid){
+      showToast('Оплата пока не найдена. Попробуйте нажать «Проверить оплату» ещё раз.');
+      return;
+    }
+    return refreshStatusFromServer().then(function(){
+      state.devices = buyDevices;
+      renderHome();
+      state.history.unshift({name: months+' мес., '+buyDevices+' устр.', date: fmtDate(new Date()), amount: amountText});
+      showToast('Оплата подтверждена! Подписка активирована.');
+      celebratePurchase();
+      closeSubpage(document.getElementById('subpage-buy'));
+    });
+  }).catch(function(err){
+    payBtn.removeAttribute('disabled');
+    console.warn('buySubscription failed:', err);
+    showToast('Не удалось запустить оплату. Попробуйте ещё раз.');
+  });
 });
 
 /* ================= ADD DEVICES SUBPAGE ================= */
