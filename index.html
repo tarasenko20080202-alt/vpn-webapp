@@ -1082,14 +1082,10 @@ animation-iteration-count: infinite;
 
 <div class="stepper-row">
 <div>
-<div class="txt">Устройства</div>
-<div class="sub" id="buyDeviceSub">Одновременно в подписке</div>
+<div class="txt" id="buyDeviceCountLabel">1 устройство</div>
+<div class="sub">Одновременно в подписке</div>
 </div>
-<div class="stepper">
-<button id="buyDeviceMinus" type="button">−</button>
-<div class="val" id="buyDeviceVal">1</div>
-<button id="buyDevicePlus" type="button">+</button>
-</div>
+<button class="chip" id="buyDeviceEditBtn" type="button" style="padding:9px 16px;">Изменить</button>
 </div>
 
 <div class="section-label" style="margin:0 4px 10px;">Период подписки</div>
@@ -1483,6 +1479,37 @@ MinionVPN использует облачные технологии для об
 <div style="text-align:center; font-size:12px; color:var(--steel); font-weight:700;">
 Не закрывайте окно — оплата может занять до минуты
 </div>
+</div>
+</div>
+
+<!-- ===================== BUY SCREEN: DEVICE COUNT SHEET (slider) ===================== -->
+<div class="sheet-overlay" id="buyDeviceSheetOverlay">
+<div class="sheet">
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+<div class="sheet-title" style="margin-bottom:0;">Добавление новых устройств</div>
+<button class="icon-btn" id="buyDeviceSheetCloseBtn">✕</button>
+</div>
+
+<div class="txt" id="buySheetLeadTxt" style="font-size:14px; font-weight:800; color:var(--ink); margin-bottom:14px;">Подписка расширится до 1 устройства</div>
+
+<div class="qty-slider-wrap">
+<div class="qty-slider-track" id="buyQtySliderTrack">
+<div class="qty-slider-fill" id="buyQtySliderFill"></div>
+<div class="qty-slider-dot" data-stop="1" style="left:0%;"></div>
+<div class="qty-slider-dot" data-stop="3" style="left:33.33%;"></div>
+<div class="qty-slider-dot" data-stop="7" style="left:66.66%;"></div>
+<div class="qty-slider-dot" data-stop="10" style="left:100%;"></div>
+<div class="qty-slider-thumb" id="buyQtySliderThumb"></div>
+</div>
+<div class="qty-slider-labels">
+<span>1</span><span>3</span><span>7</span><span>10</span>
+</div>
+</div>
+
+<button class="cta-primary" id="buyDeviceSheetConfirmBtn" style="margin-top:6px;">
+<span id="buyDeviceSheetConfirmTxt">Расширить до 1 устройства</span>
+<span class="price" id="buyDeviceSheetPrice">+0 ₽</span>
+</button>
 </div>
 </div>
 
@@ -1919,24 +1946,114 @@ document.getElementById('copyRefBtn2').addEventListener('click', function(){ cop
 document.getElementById('shareRefBtn').addEventListener('click', shareReferral);
 document.getElementById('shareRefBtn2').addEventListener('click', shareReferral);
 
+/* ================= shared: quantity slider (1 / 3 / 7 / 10 stops) ================= */
+var qtySliderStops = [1, 3, 7, 10];
+var qtySliderPositions = [0, 33.33, 66.66, 100];
+function qtyStopToPercent(val){
+  for(var i=0;i<qtySliderStops.length-1;i++){
+    if(val >= qtySliderStops[i] && val <= qtySliderStops[i+1]){
+      var ratio = (val - qtySliderStops[i]) / (qtySliderStops[i+1]-qtySliderStops[i]);
+      return qtySliderPositions[i] + ratio*(qtySliderPositions[i+1]-qtySliderPositions[i]);
+    }
+  }
+  return val <= qtySliderStops[0] ? 0 : 100;
+}
+function qtyPercentToRaw(pct){
+  for(var i=0;i<qtySliderPositions.length-1;i++){
+    if(pct >= qtySliderPositions[i] && pct <= qtySliderPositions[i+1]){
+      var ratio = (pct - qtySliderPositions[i]) / (qtySliderPositions[i+1]-qtySliderPositions[i]);
+      return qtySliderStops[i] + ratio*(qtySliderStops[i+1]-qtySliderStops[i]);
+    }
+  }
+  return pct <= 0 ? qtySliderStops[0] : qtySliderStops[qtySliderStops.length-1];
+}
+function qtyNearestStop(val){
+  var closest = qtySliderStops[0];
+  qtySliderStops.forEach(function(s){ if(Math.abs(s-val) < Math.abs(closest-val)) closest = s; });
+  return closest;
+}
+function tierPriceFor(count){
+  if(count<=1) return 0;
+  if(count<=3) return 299;
+  if(count<=7) return 399;
+  return 499;
+}
+// Привязывает слайдер (track/fill/thumb) к значению; onChange(value) вызывается при каждом изменении.
+function bindQtySlider(trackEl, fillEl, thumbEl, initialVal, onChange){
+  var current = initialVal;
+  function render(){
+    var pct = qtyStopToPercent(current);
+    fillEl.style.width = pct + '%';
+    thumbEl.style.left = pct + '%';
+    trackEl.querySelectorAll('.qty-slider-dot').forEach(function(dot){
+      dot.classList.toggle('active', parseInt(dot.getAttribute('data-stop'),10) <= current);
+    });
+    onChange(current);
+  }
+  function setFromClientX(clientX){
+    var rect = trackEl.getBoundingClientRect();
+    var pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    current = Math.round(qtyNearestStop(qtyPercentToRaw(pct)));
+    render();
+  }
+  var dragging = false;
+  thumbEl.addEventListener('pointerdown', function(e){ dragging = true; thumbEl.setPointerCapture(e.pointerId); });
+  thumbEl.addEventListener('pointermove', function(e){ if(dragging) setFromClientX(e.clientX); });
+  thumbEl.addEventListener('pointerup', function(){ dragging = false; });
+  trackEl.addEventListener('click', function(e){ if(e.target !== thumbEl) setFromClientX(e.clientX); });
+  render();
+  return { get: function(){ return current; }, set: function(v){ current = v; render(); } };
+}
+  
 /* ================= BUY / RENEW SUBPAGE ================= */
 var buyDevices = 1;
 var selectedPeriodCard = document.querySelector('#planGrid .plan-card.active');
 var selectedMethodRow = document.querySelector('#payMethodList .pay-method-row.active');
 
+function deviceWord(n){
+  if(n === 1) return 'устройство';
+  if(n >= 2 && n <= 4) return 'устройства';
+  return 'устройств';
+}
+function refreshBuyDeviceLabel(){
+  document.getElementById('buyDeviceCountLabel').textContent = buyDevices + ' ' + deviceWord(buyDevices);
+}
+refreshBuyDeviceLabel();
+
 function recalcBuyTotal(){
   var base = parseInt(selectedPeriodCard.getAttribute('data-price'), 10);
-  var extraPerDevice = 50; // per extra device flat fee, illustrative
-  var total = base + Math.max(0, buyDevices-1) * extraPerDevice;
+  var extra = tierPriceFor(buyDevices);
+  var total = base + extra;
   document.getElementById('buyTotalAmount').textContent = total + ' ₽';
   document.getElementById('buyConfirmPrice').textContent = total + ' ₽';
   return total;
 }
-document.getElementById('buyDeviceMinus').addEventListener('click', function(){
-  if(buyDevices>1){ buyDevices--; document.getElementById('buyDeviceVal').textContent = buyDevices; recalcBuyTotal(); }
+
+/* --- шторка "Изменить" со слайдером, как на видео --- */
+var buyDeviceSheetOverlay = document.getElementById('buyDeviceSheetOverlay');
+var buyDevSlider = bindQtySlider(
+  document.getElementById('buyQtySliderTrack'),
+  document.getElementById('buyQtySliderFill'),
+  document.getElementById('buyQtySliderThumb'),
+  buyDevices,
+  function(val){
+    document.getElementById('buySheetLeadTxt').textContent = 'Подписка расширится до ' + val + ' ' + deviceWord(val);
+    document.getElementById('buyDeviceSheetConfirmTxt').textContent = 'Расширить до ' + val + ' ' + deviceWord(val);
+    document.getElementById('buyDeviceSheetPrice').textContent = '+' + tierPriceFor(val) + ' ₽';
+  }
+);
+document.getElementById('buyDeviceEditBtn').addEventListener('click', function(){
+  buyDevSlider.set(buyDevices);
+  buyDeviceSheetOverlay.classList.add('open');
 });
-document.getElementById('buyDevicePlus').addEventListener('click', function(){
-  if(buyDevices<10){ buyDevices++; document.getElementById('buyDeviceVal').textContent = buyDevices; recalcBuyTotal(); }
+document.getElementById('buyDeviceSheetCloseBtn').addEventListener('click', function(){
+  buyDeviceSheetOverlay.classList.remove('open');
+});
+document.getElementById('buyDeviceSheetConfirmBtn').addEventListener('click', function(){
+  buyDevices = buyDevSlider.get();
+  refreshBuyDeviceLabel();
+  recalcBuyTotal();
+  buyDeviceSheetOverlay.classList.remove('open');
 });
 document.querySelectorAll('#planGrid .plan-card').forEach(function(card){
   card.addEventListener('click', function(){
@@ -2003,76 +2120,32 @@ document.getElementById('sheetPayBtn').addEventListener('click', function(){
 });
 
 /* ================= ADD DEVICES SUBPAGE ================= */
-var addDevCount = state.devices;
-var sliderStops = [1, 3, 7, 10];
-var stopPositions = [0, 33.33, 66.66, 100];
-var qtyTrack = document.getElementById('qtySliderTrack');
-var qtyFill = document.getElementById('qtySliderFill');
-var qtyThumb = document.getElementById('qtySliderThumb');
-
-function stopToPercent(val){
-  for(var i=0;i<sliderStops.length-1;i++){
-    if(val >= sliderStops[i] && val <= sliderStops[i+1]){
-      var ratio = (val - sliderStops[i]) / (sliderStops[i+1]-sliderStops[i]);
-      return stopPositions[i] + ratio*(stopPositions[i+1]-stopPositions[i]);
-    }
+var addDevSlider = bindQtySlider(
+  document.getElementById('qtySliderTrack'),
+  document.getElementById('qtySliderFill'),
+  document.getElementById('qtySliderThumb'),
+  state.devices,
+  function(val){
+    document.getElementById('addDevVal').textContent = val;
+    document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.devices;
+    document.getElementById('addDevPrice').textContent = '+' + tierPriceFor(val) + ' ₽';
+    document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
+      card.classList.toggle('active', parseInt(card.getAttribute('data-tier'),10) === val);
+    });
   }
-  return val <= sliderStops[0] ? 0 : 100;
-}
-function percentToRawValue(pct){
-  for(var i=0;i<stopPositions.length-1;i++){
-    if(pct >= stopPositions[i] && pct <= stopPositions[i+1]){
-      var ratio = (pct - stopPositions[i]) / (stopPositions[i+1]-stopPositions[i]);
-      return sliderStops[i] + ratio*(sliderStops[i+1]-sliderStops[i]);
-    }
-  }
-  return pct <= 0 ? sliderStops[0] : sliderStops[sliderStops.length-1];
-}
-function nearestStop(val){
-  var closest = sliderStops[0];
-  sliderStops.forEach(function(s){ if(Math.abs(s-val) < Math.abs(closest-val)) closest = s; });
-  return closest;
-}
-function tierPriceFor(count){
-  if(count<=1) return 0;
-  if(count<=3) return 299;
-  if(count<=7) return 399;
-  return 499;
-}
-function updateSliderUI(){
-  var pct = stopToPercent(addDevCount);
-  qtyFill.style.width = pct + '%';
-  qtyThumb.style.left = pct + '%';
-  document.querySelectorAll('#qtySliderTrack .qty-slider-dot').forEach(function(dot){
-    dot.classList.toggle('active', parseInt(dot.getAttribute('data-stop'),10) <= addDevCount);
-  });
-  document.getElementById('addDevVal').textContent = addDevCount;
-  document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.devices;
-  var price = tierPriceFor(addDevCount);
-  document.getElementById('addDevPrice').textContent = price ? ('+' + price + ' ₽') : '—';
-  document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
-    card.classList.toggle('active', parseInt(card.getAttribute('data-tier'),10) === addDevCount);
-  });
-}
-function setSliderFromClientX(clientX){
-  var rect = qtyTrack.getBoundingClientRect();
-  var pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-  addDevCount = Math.round(nearestStop(percentToRawValue(pct)));
-  updateSliderUI();
-}
-var draggingSlider = false;
-qtyThumb.addEventListener('pointerdown', function(e){ draggingSlider = true; qtyThumb.setPointerCapture(e.pointerId); });
-qtyThumb.addEventListener('pointermove', function(e){ if(draggingSlider) setSliderFromClientX(e.clientX); });
-qtyThumb.addEventListener('pointerup', function(){ draggingSlider = false; });
-qtyTrack.addEventListener('click', function(e){ if(e.target !== qtyThumb) setSliderFromClientX(e.clientX); });
-
+);
 document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
   card.addEventListener('click', function(){
-    addDevCount = parseInt(card.getAttribute('data-tier'), 10);
-    updateSliderUI();
+    addDevSlider.set(parseInt(card.getAttribute('data-tier'), 10));
   });
 });
-updateSliderUI();
+document.getElementById('addDevConfirmBtn').addEventListener('click', function(){
+  state.devices = addDevSlider.get();
+  renderHome();
+  showToast('Подписка расширена до ' + state.devices + ' устройств');
+  celebratePurchase();
+  closeSubpage(document.getElementById('subpage-adddevices'));
+});
 
 /* ================= SETUP SUBPAGE ================= */
 var platformIcons = { iOS:'📱', Android:'🤖', macOS:'💻', Windows:'🖥️', Other:'🔗' };
