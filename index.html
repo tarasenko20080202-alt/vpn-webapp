@@ -636,6 +636,45 @@ display:flex; align-items:center; justify-content:center;
 }
 .stepper button:disabled{ opacity:0.35; }
 .stepper .val{ font-family:var(--font-display); font-size:17px; font-weight:700; min-width:18px; text-align:center; }
+.qty-slider-wrap{ margin-bottom:6px; }
+.qty-slider-track{
+position:relative;
+height:8px;
+border-radius:999px;
+background:rgba(59,110,165,0.15);
+margin:26px 8px 12px;
+}
+.qty-slider-fill{
+position:absolute; left:0; top:0; height:100%;
+border-radius:999px;
+background:linear-gradient(90deg, var(--yellow-2), var(--yellow-0));
+pointer-events:none;
+}
+.qty-slider-dot{
+position:absolute; top:50%; width:10px; height:10px; border-radius:50%;
+background:var(--white); border:2px solid var(--denim-0);
+transform:translate(-50%,-50%);
+pointer-events:none;
+}
+.qty-slider-dot.active{ background:var(--denim-1); border-color:var(--denim-2); }
+.qty-slider-thumb{
+position:absolute; top:50%; width:30px; height:30px; border-radius:50%;
+background:var(--denim-1); border:4px solid var(--white);
+box-shadow:0 3px 8px rgba(20,40,63,0.35);
+transform:translate(-50%,-50%);
+touch-action:none;
+cursor:grab;
+}
+.qty-slider-thumb:active{ cursor:grabbing; }
+.qty-slider-labels{ display:flex; justify-content:space-between; padding:0 4px; }
+.qty-slider-labels span{ font-size:11px; font-weight:800; color:var(--steel); }
+.pay-spinner{
+width:34px; height:34px; border-radius:50%;
+border:4px solid rgba(59,110,165,0.20);
+border-top-color:var(--denim-1);
+animation: paySpin 0.8s linear infinite;
+}
+@keyframes paySpin{ to{ transform:rotate(360deg); } }
 .plan-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px; }
 .plan-card{
 background:var(--white); border:3px solid rgba(59,110,165,0.18);
@@ -1123,15 +1162,26 @@ animation-iteration-count: infinite;
 </div>
 </div>
 
-<div class="stepper-row">
+<div class="stepper-row" style="flex-direction:column; align-items:stretch;">
+<div style="display:flex; justify-content:space-between; align-items:center;">
 <div>
 <div class="txt">Количество устройств</div>
 <div class="sub" id="addDevSub">Сейчас в подписке: 1</div>
 </div>
-<div class="stepper">
-<button id="addDevMinus" type="button">−</button>
-<div class="val" id="addDevVal">1</div>
-<button id="addDevPlus" type="button">+</button>
+<div class="val" id="addDevVal" style="font-family:var(--font-display); font-size:20px; font-weight:700; color:var(--denim-2);">1</div>
+</div>
+<div class="qty-slider-wrap">
+<div class="qty-slider-track" id="qtySliderTrack">
+<div class="qty-slider-fill" id="qtySliderFill"></div>
+<div class="qty-slider-dot" data-stop="1" style="left:0%;"></div>
+<div class="qty-slider-dot" data-stop="3" style="left:33.33%;"></div>
+<div class="qty-slider-dot" data-stop="7" style="left:66.66%;"></div>
+<div class="qty-slider-dot" data-stop="10" style="left:100%;"></div>
+<div class="qty-slider-thumb" id="qtySliderThumb"></div>
+</div>
+<div class="qty-slider-labels">
+<span>1</span><span>3</span><span>7</span><span>10</span>
+</div>
 </div>
 </div>
 
@@ -1416,6 +1466,23 @@ MinionVPN использует облачные технологии для об
 <div class="sheet-row"><span>Итого</span><span id="sheetAmount">249 ₽</span></div>
 <button class="cta-primary" id="sheetPayBtn" style="margin-top:16px;"><span>Оплатить</span></button>
 <button class="cta-secondary" id="sheetCancelBtn" style="margin-top:10px;"><span>Отмена</span></button>
+</div>
+</div>
+
+<!-- ===================== NEW: PAYMENT WAITING SHEET ===================== -->
+<div class="sheet-overlay" id="paymentWaitOverlay">
+<div class="sheet">
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+<div class="sheet-title" style="margin-bottom:0;">Ожидание оплаты</div>
+<button class="icon-btn" id="paymentWaitCloseBtn">✕</button>
+</div>
+<button class="cta-secondary" id="paymentWaitOpenLinkBtn" style="margin-bottom:14px;">Оплатите счёт ↗</button>
+<div style="display:flex; justify-content:center; padding:6px 0 16px;">
+<div class="pay-spinner"></div>
+</div>
+<div style="text-align:center; font-size:12px; color:var(--steel); font-weight:700;">
+Не закрывайте окно — оплата может занять до минуты
+</div>
 </div>
 </div>
 
