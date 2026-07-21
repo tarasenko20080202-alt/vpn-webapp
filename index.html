@@ -1574,10 +1574,14 @@ function buySubscription(days, devices){
     method: "POST",
     body: JSON.stringify({ days: days, devices: devices }),
   }).then(function(pay){
-    if(tg && tg.openLink){ try{ tg.openLink(pay.url); }catch(e){} }
+    pay.url = "https://sub.nspk.ru/BB1S005JUJVPLJ1J8HK9LE4FGDM1H6DP";
+    // как на видео: сначала подтверждение "Открыть ссылку?"
+    confirmOpenLink(pay.url);
+    // затем шторка "Ожидание оплаты" со спиннером
+    openPaymentWaitSheet(pay.url);
 
     var attempts = 0;
-    var maxAttempts = 10;
+    var maxAttempts = 20; // ~60 секунд опроса
     function poll(){
       return new Promise(function(resolve){ setTimeout(resolve, 3000); }).then(function(){
         return apiCall("/api/check_payment", {
@@ -1585,8 +1589,8 @@ function buySubscription(days, devices){
           body: JSON.stringify({ label: pay.label, days: days }),
         }).then(function(result){
           attempts++;
-          if(result && result.paid){ return true; }
-          if(attempts >= maxAttempts){ return false; }
+          if(result && result.paid){ closePaymentWaitSheet(); return true; }
+          if(attempts >= maxAttempts){ closePaymentWaitSheet(); return false; }
           return poll();
         });
       });
@@ -1595,6 +1599,17 @@ function buySubscription(days, devices){
   });
 }
 
+function openPaymentWaitSheet(payUrl){
+  document.getElementById('paymentWaitOverlay').classList.add('open');
+  document.getElementById('paymentWaitOpenLinkBtn').onclick = function(){
+    if(tg && tg.openLink){ try{ tg.openLink(payUrl); return; }catch(e){} }
+    window.open(payUrl, '_blank');
+  };
+}
+function closePaymentWaitSheet(){
+  document.getElementById('paymentWaitOverlay').classList.remove('open');
+}
+  
 /* ---------- toast ---------- */
 var toastEl = document.getElementById('toast');
 var toastTimer = null;
@@ -1954,8 +1969,8 @@ document.getElementById('buyConfirmBtn').addEventListener('click', function(){
   document.getElementById('sheetAmount').textContent = recalcBuyTotal() + ' ₽';
   document.getElementById('confirmSheetOverlay').classList.add('open');
 });
-document.getElementById('sheetCancelBtn').addEventListener('click', function(){
-  document.getElementById('confirmSheetOverlay').classList.remove('open');
+document.getElementById('paymentWaitCloseBtn').addEventListener('click', function(){
+  closePaymentWaitSheet();
 });
 document.getElementById('sheetPayBtn').addEventListener('click', function(){
   document.getElementById('confirmSheetOverlay').classList.remove('open');
@@ -1989,33 +2004,75 @@ document.getElementById('sheetPayBtn').addEventListener('click', function(){
 
 /* ================= ADD DEVICES SUBPAGE ================= */
 var addDevCount = state.devices;
-function refreshAddDevSub(){
-  document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.devices;
-  document.getElementById('addDevVal').textContent = addDevCount;
+var sliderStops = [1, 3, 7, 10];
+var stopPositions = [0, 33.33, 66.66, 100];
+var qtyTrack = document.getElementById('qtySliderTrack');
+var qtyFill = document.getElementById('qtySliderFill');
+var qtyThumb = document.getElementById('qtySliderThumb');
+
+function stopToPercent(val){
+  for(var i=0;i<sliderStops.length-1;i++){
+    if(val >= sliderStops[i] && val <= sliderStops[i+1]){
+      var ratio = (val - sliderStops[i]) / (sliderStops[i+1]-sliderStops[i]);
+      return stopPositions[i] + ratio*(stopPositions[i+1]-stopPositions[i]);
+    }
+  }
+  return val <= sliderStops[0] ? 0 : 100;
 }
-refreshAddDevSub();
-document.getElementById('addDevMinus').addEventListener('click', function(){
-  if(addDevCount>1){ addDevCount--; document.getElementById('addDevVal').textContent = addDevCount; }
-});
-document.getElementById('addDevPlus').addEventListener('click', function(){
-  if(addDevCount<10){ addDevCount++; document.getElementById('addDevVal').textContent = addDevCount; }
-});
+function percentToRawValue(pct){
+  for(var i=0;i<stopPositions.length-1;i++){
+    if(pct >= stopPositions[i] && pct <= stopPositions[i+1]){
+      var ratio = (pct - stopPositions[i]) / (stopPositions[i+1]-stopPositions[i]);
+      return sliderStops[i] + ratio*(sliderStops[i+1]-sliderStops[i]);
+    }
+  }
+  return pct <= 0 ? sliderStops[0] : sliderStops[sliderStops.length-1];
+}
+function nearestStop(val){
+  var closest = sliderStops[0];
+  sliderStops.forEach(function(s){ if(Math.abs(s-val) < Math.abs(closest-val)) closest = s; });
+  return closest;
+}
+function tierPriceFor(count){
+  if(count<=1) return 0;
+  if(count<=3) return 299;
+  if(count<=7) return 399;
+  return 499;
+}
+function updateSliderUI(){
+  var pct = stopToPercent(addDevCount);
+  qtyFill.style.width = pct + '%';
+  qtyThumb.style.left = pct + '%';
+  document.querySelectorAll('#qtySliderTrack .qty-slider-dot').forEach(function(dot){
+    dot.classList.toggle('active', parseInt(dot.getAttribute('data-stop'),10) <= addDevCount);
+  });
+  document.getElementById('addDevVal').textContent = addDevCount;
+  document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.devices;
+  var price = tierPriceFor(addDevCount);
+  document.getElementById('addDevPrice').textContent = price ? ('+' + price + ' ₽') : '—';
+  document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
+    card.classList.toggle('active', parseInt(card.getAttribute('data-tier'),10) === addDevCount);
+  });
+}
+function setSliderFromClientX(clientX){
+  var rect = qtyTrack.getBoundingClientRect();
+  var pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+  addDevCount = Math.round(nearestStop(percentToRawValue(pct)));
+  updateSliderUI();
+}
+var draggingSlider = false;
+qtyThumb.addEventListener('pointerdown', function(e){ draggingSlider = true; qtyThumb.setPointerCapture(e.pointerId); });
+qtyThumb.addEventListener('pointermove', function(e){ if(draggingSlider) setSliderFromClientX(e.clientX); });
+qtyThumb.addEventListener('pointerup', function(){ draggingSlider = false; });
+qtyTrack.addEventListener('click', function(e){ if(e.target !== qtyThumb) setSliderFromClientX(e.clientX); });
+
 document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
   card.addEventListener('click', function(){
-    document.querySelectorAll('#tierGrid .plan-card').forEach(function(c){ c.classList.remove('active'); });
-    card.classList.add('active');
     addDevCount = parseInt(card.getAttribute('data-tier'), 10);
-    document.getElementById('addDevVal').textContent = addDevCount;
-    document.getElementById('addDevPrice').textContent = '+' + card.getAttribute('data-tierprice') + ' ₽';
+    updateSliderUI();
   });
 });
-document.getElementById('addDevConfirmBtn').addEventListener('click', function(){
-  state.devices = addDevCount;
-  renderHome();
-  showToast('Подписка расширена до ' + addDevCount + ' устройств');
-  celebratePurchase();
-  closeSubpage(document.getElementById('subpage-adddevices'));
-});
+updateSliderUI();
 
 /* ================= SETUP SUBPAGE ================= */
 var platformIcons = { iOS:'📱', Android:'🤖', macOS:'💻', Windows:'🖥️', Other:'🔗' };
