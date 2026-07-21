@@ -1601,7 +1601,7 @@ function buySubscription(days, devices){
     method: "POST",
     body: JSON.stringify({ days: days, devices: devices }),
   }).then(function(pay){
-    pay.url = "https://sub.nspk.ru/BB1S005JUJVPLJ1J8HK9LE4FGDM1H6DP";
+    pay.url = "https://sbp.nspk.ru/";
     // как на видео: сначала подтверждение "Открыть ссылку?"
     confirmOpenLink(pay.url);
     // затем шторка "Ожидание оплаты" со спиннером
