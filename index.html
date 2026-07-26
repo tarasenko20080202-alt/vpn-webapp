@@ -244,7 +244,7 @@ transition: width 0.8s cubic-bezier(.22,1,.36,1);
 }
 .stat-grid{
 display:grid;
-grid-template-columns:1fr 1fr 1fr;
+grid-template-columns:1fr 1fr;
 gap:10px;
 width:100%;
 margin-bottom:22px;
@@ -887,16 +887,12 @@ animation-iteration-count: infinite;
 </div>
 <div class="stat-grid">
 <div class="stat-box">
-<div class="num" id="trafficVal">0</div>
-<div class="lbl">ГБ трафика</div>
+<div class="num" id="trafficVal">∞</div>
+<div class="lbl">трафик</div>
 </div>
 <div class="stat-box">
 <div class="num" id="devicesVal">1</div>
 <div class="lbl">устройств</div>
-</div>
-<div class="stat-box">
-<div class="num" id="pingVal">24</div>
-<div class="lbl">мс пинг</div>
 </div>
 </div>
 <button class="cta-primary" id="renewBtn" data-open="buy">
@@ -916,27 +912,7 @@ animation-iteration-count: infinite;
 
 <div class="section-label">Ваши устройства</div>
 <div id="deviceList">
-<div class="device-row" data-device="1">
-<div class="left">
-<div class="ico">📱</div>
-<div>
-<div class="name">iPhone 15</div>
-<div class="sub">Подключено 2 часа назад</div>
-</div>
-</div>
-<div class="status-chip">В сети</div>
-</div>
-</div>
-
-<div class="tiles">
-<div class="tile">
-<div class="label">Сервер</div>
-<div class="value" id="serverTile">Европа</div>
-</div>
-<div class="tile tappable" data-open="referral">
-<div class="label">Бонус за друга</div>
-<div class="value">+3 дня</div>
-</div>
+<div class="empty-state"><div class="ico">📶</div><div>Загружаем список устройств…</div></div>
 </div>
 </div>
 
@@ -974,16 +950,7 @@ animation-iteration-count: infinite;
 
 <div class="section-label">Ваши устройства</div>
 <div id="settingsDeviceList">
-<div class="device-row" data-device="1">
-<div class="left">
-<div class="ico">📱</div>
-<div>
-<div class="name">iPhone 15</div>
-<div class="sub">Подключено 2 часа назад</div>
-</div>
-</div>
-<button class="kick-btn" data-action="kick-device">Отключить</button>
-</div>
+<div class="empty-state"><div class="ico">📶</div><div>Загружаем список устройств…</div></div>
 </div>
 <button class="cta-secondary" id="addDeviceBtn" data-open="adddevices" style="margin-top:4px;">➕ Добавить устройство</button>
 <button class="cta-secondary" id="downloadConfigBtn" style="margin-top:8px;">📄 Скачать конфиг</button>
@@ -997,23 +964,14 @@ animation-iteration-count: infinite;
 <div class="avatar-sub" id="profileUsername">&nbsp;</div>
 </div>
 
-<div class="ref-box">
-<div class="lead">👥 Пригласи друга — получи +3 дня бесплатно</div>
-<div class="ref-link">
-<span id="refLinkText">t.me/MinionVPNBot?start=ref_...</span>
-<button class="copy-btn" id="copyRefBtn">Копировать</button>
-</div>
-<button class="share-btn" id="shareRefBtn">Отправить другу</button>
-</div>
-
-<div class="tiles" style="margin-bottom:16px;">
+<div class="tiles" style="margin-bottom:16px; margin-top:0;">
 <div class="tile">
 <div class="label">Статус</div>
 <div class="value" id="profileStatusTile">Активна</div>
 </div>
-<div class="tile">
-<div class="label">Приглашено друзей</div>
-<div class="value" id="invitedFriendsTile">0</div>
+<div class="tile tappable" data-open="referral">
+<div class="label">Реферальная программа</div>
+<div class="value" id="profileRefTile">+3 дня за друга</div>
 </div>
 </div>
 
@@ -1306,7 +1264,7 @@ animation-iteration-count: infinite;
 </div>
 
 <div class="ref-box">
-<div class="lead">🎁 За каждого приглашённого друга вы получите 15% бонусных дней от всех его пополнений. Например, если ваш друг продлит подписку на 1 год, вы получите 55 дней.</div>
+<div class="lead">🎁 За каждого приглашённого друга вы получите +3 дня подписки сразу, а также 15% бонусных дней от всех его пополнений. Например, если ваш друг продлит подписку на 1 год, вы получите 55 дней.</div>
 <div class="ref-link">
 <span id="refLinkText2">t.me/MinionVPNBot?start=ref_...</span>
 <button class="copy-btn" id="copyRefBtn2">Копировать</button>
@@ -1569,12 +1527,22 @@ function apiCall(path, options){
     });
 }
 
-// Main screen: load subscription status. me.status = { expires, active, phones, is_test }
+// Main screen: load subscription status. me.status = { expires, active, phones, is_test, period_days, months }
 function loadStatus(){
   return apiCall("/api/me").then(function(me){
     if(me && me.referral_link){ state.refLink = me.referral_link.replace(/^https?:\/\//, ''); }
     return (me && me.status) || me;
   });
+}
+
+// Real connected devices list: GET /api/devices -> [{id, name, connected_at, online}, ...]
+// NOTE: this endpoint needs to exist in bot/api.py — see chat notes.
+function loadDevices(){
+  return apiCall("/api/devices");
+}
+
+function disconnectDevice(id){
+  return apiCall("/api/devices/" + encodeURIComponent(id), { method: "DELETE" });
 }
 
 // "Скачать конфиг" button
@@ -1659,14 +1627,14 @@ document.addEventListener('pointerup', function(e){
 });
 
 /* ---------- app state ---------- */
+// periodDays persists locally so the progress bar reflects the plan that was
+// actually purchased (1/3/6/12 months) instead of always assuming 30 days.
+var savedPeriodDays = parseInt(localStorage.getItem('mvpn_period_days') || '', 10);
 var state = {
   expiryDate: new Date(Date.now() + 12*24*60*60*1000),
-  periodDays: 30,
+  periodDays: (!isNaN(savedPeriodDays) && savedPeriodDays > 0) ? savedPeriodDays : 30,
   daysLeft: 12,
-  traffic: 18,
-  devices: 1,
-  ping: 24,
-  server: 'Европа',
+  devices: [], // real devices, filled by refreshDevices()
   invitedFriends: 0,
   refDays: 0,
   refLink: 't.me/MinionVPNBot?start=ref_' + Math.random().toString(36).slice(2,8),
@@ -1757,7 +1725,18 @@ function setRainVisible(visible){
 
 function updateDaysLeft(){
   var diffMs = state.expiryDate - new Date();
-  state.daysLeft = Math.ceil(diffMs / (1000*60*60*24));
+  // clamp so we never show negative days
+  state.daysLeft = Math.max(0, Math.ceil(diffMs / (1000*60*60*24)));
+  // safety net: a stored periodDays should never be smaller than the days
+  // actually left (that's what caused "12 дней осталось из 30" while the
+  // real cycle had already moved on) — if that happens, assume the closest
+  // standard plan length instead of showing a broken fraction.
+  if(state.daysLeft > state.periodDays){
+    var standardLengths = [30, 90, 180, 365];
+    var fixed = standardLengths.find(function(n){ return n >= state.daysLeft; }) || state.daysLeft;
+    state.periodDays = fixed;
+    localStorage.setItem('mvpn_period_days', String(fixed));
+  }
 }
 
 function renderHome(){
@@ -1766,15 +1745,11 @@ function renderHome(){
 
   document.getElementById('expiryText').textContent = expired ? 'Истекла ' + fmtDate(state.expiryDate) : 'До ' + fmtDate(state.expiryDate);
   document.getElementById('daysLeftLabel').textContent = expired ? 'Подписка не продлена' : (state.daysLeft + ' дней осталось');
-  document.getElementById('periodLabel').textContent = 'из ' + state.periodDays;
+  document.getElementById('periodLabel').textContent = expired ? '' : ('из ' + state.periodDays);
   document.getElementById('progressFill').style.width = Math.max(0, Math.min(100, 100 - (state.daysLeft/state.periodDays*100))) + '%';
-  document.getElementById('trafficVal').textContent = state.traffic;
-  document.getElementById('devicesVal').textContent = state.devices;
-  document.getElementById('pingVal').textContent = state.ping;
-  document.getElementById('serverTile').textContent = state.server;
-  document.getElementById('refLinkText').textContent = state.refLink;
+  document.getElementById('devicesVal').textContent = state.devices.length;
   document.getElementById('refLinkText2').textContent = state.refLink;
-  document.getElementById('invitedFriendsTile').textContent = state.invitedFriends;
+  document.getElementById('invitedFriendsTile') && (document.getElementById('invitedFriendsTile').textContent = state.invitedFriends);
   document.getElementById('refInvitedVal').textContent = state.invitedFriends;
   document.getElementById('refDaysVal').textContent = state.refDays;
 
@@ -1794,6 +1769,47 @@ function renderHome(){
 }
 renderHome();
 
+/* ---------- real connected devices (home + settings tabs) ---------- */
+function deviceRowHtml(dev, withKick){
+  var name = dev.name || 'Устройство';
+  var sub = dev.connected_at ? ('Подключено ' + dev.connected_at) : (dev.online ? 'В сети' : 'Не в сети');
+  var right = withKick
+    ? '<button class="kick-btn" data-action="kick-device" data-device-id="'+dev.id+'">Отключить</button>'
+    : '<div class="status-chip">'+(dev.online ? 'В сети' : 'Офлайн')+'</div>';
+  return '' +
+    '<div class="device-row" data-device="'+dev.id+'">' +
+      '<div class="left">' +
+        '<div class="ico">📱</div>' +
+        '<div><div class="name">'+name+'</div><div class="sub">'+sub+'</div></div>' +
+      '</div>' +
+      right +
+    '</div>';
+}
+function renderDeviceLists(){
+  var home = document.getElementById('deviceList');
+  var settings = document.getElementById('settingsDeviceList');
+  if(!state.devices.length){
+    var empty = '<div class="empty-state"><div class="ico">📵</div><div>Нет подключённых устройств</div></div>';
+    home.innerHTML = empty;
+    settings.innerHTML = empty;
+    return;
+  }
+  home.innerHTML = state.devices.map(function(d){ return deviceRowHtml(d, false); }).join('');
+  settings.innerHTML = state.devices.map(function(d){ return deviceRowHtml(d, true); }).join('');
+}
+function refreshDevices(){
+  return loadDevices().then(function(list){
+    state.devices = Array.isArray(list) ? list : [];
+    renderDeviceLists();
+    renderHome();
+  }).catch(function(err){
+    console.warn('loadDevices failed:', err);
+    document.getElementById('deviceList').innerHTML = '<div class="empty-state"><div class="ico">⚠️</div><div>Не удалось загрузить устройства</div></div>';
+    document.getElementById('settingsDeviceList').innerHTML = '<div class="empty-state"><div class="ico">⚠️</div><div>Не удалось загрузить устройства</div></div>';
+  });
+}
+refreshDevices();
+
 /* ---------- pull real subscription status from the backend ---------- */
 function applyStatus(status){
   if(!status) return;
@@ -1801,7 +1817,15 @@ function applyStatus(status){
     var exp = new Date(status.expires);
     if(!isNaN(exp.getTime())){ state.expiryDate = exp; }
   }
-  if(typeof status.phones === 'number'){ state.devices = status.phones; }
+  // Prefer an explicit period length from the backend if it sends one.
+  if(status.period_days){
+    state.periodDays = status.period_days;
+    localStorage.setItem('mvpn_period_days', String(status.period_days));
+  } else if(status.months){
+    var pd = Math.round(status.months * 30);
+    state.periodDays = pd;
+    localStorage.setItem('mvpn_period_days', String(pd));
+  }
   state.active = !!status.active;
   state.isTest = !!status.is_test;
 }
@@ -1883,9 +1907,7 @@ document.querySelectorAll('#serverChips .chip').forEach(function(chip){
   chip.addEventListener('click', function(){
     document.querySelectorAll('#serverChips .chip').forEach(function(c){ c.classList.remove('active'); });
     chip.classList.add('active');
-    state.server = chip.getAttribute('data-server');
-    document.getElementById('serverTile').textContent = state.server;
-    showToast('Сервер изменён: ' + state.server);
+    showToast('Сервер изменён: ' + chip.getAttribute('data-server'));
   });
 });
 
@@ -1896,18 +1918,21 @@ document.querySelectorAll('.switch').forEach(function(sw){
   });
 });
 
-/* ---------- settings/home: kick device ---------- */
+/* ---------- settings/home: kick device (real disconnect via backend) ---------- */
 document.addEventListener('click', function(e){
   var kickBtn = e.target.closest('[data-action="kick-device"]');
   if(kickBtn){
+    var deviceId = kickBtn.getAttribute('data-device-id');
     var row = kickBtn.closest('.device-row');
-    if(row){
-      row.style.transition = 'opacity .25s ease, transform .25s ease';
-      row.style.opacity = '0';
-      row.style.transform = 'translateX(30px)';
-      setTimeout(function(){ row.remove(); }, 250);
+    kickBtn.setAttribute('disabled', 'true');
+    disconnectDevice(deviceId).then(function(){
       showToast('Устройство отключено');
-    }
+      return refreshDevices();
+    }).catch(function(err){
+      console.warn('disconnectDevice failed:', err);
+      kickBtn.removeAttribute('disabled');
+      showToast('Не удалось отключить устройство');
+    });
   }
 });
 
@@ -1922,7 +1947,7 @@ if(downloadBtn){
   });
 }
 
-/* ---------- profile: copy / share referral ---------- */
+/* ---------- profile / referral: copy / share referral ---------- */
 function copyText(text){
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text).then(function(){ showToast('Скопировано'); }).catch(function(){ showToast('Не удалось скопировать'); });
@@ -1941,9 +1966,7 @@ function shareReferral(){
     copyText(link);
   }
 }
-document.getElementById('copyRefBtn').addEventListener('click', function(){ copyText('https://'+state.refLink); });
 document.getElementById('copyRefBtn2').addEventListener('click', function(){ copyText('https://'+state.refLink); });
-document.getElementById('shareRefBtn').addEventListener('click', shareReferral);
 document.getElementById('shareRefBtn2').addEventListener('click', shareReferral);
 
 /* ================= shared: quantity slider (1 / 3 / 7 / 10 stops) ================= */
@@ -2102,7 +2125,14 @@ document.getElementById('sheetPayBtn').addEventListener('click', function(){
       showToast('Оплата пока не найдена. Попробуйте нажать «Проверить оплату» ещё раз.');
       return;
     }
+    // remember the real length of the plan that was just bought, so the
+    // progress bar denominator ("из X") matches reality next time we load
+    var boughtDays = months * 30;
+    state.periodDays = boughtDays;
+    localStorage.setItem('mvpn_period_days', String(boughtDays));
     return refreshStatusFromServer().then(function(){
+      return refreshDevices();
+    }).then(function(){
       renderHome();
       state.history.unshift({name: months+' мес., '+buyDevices+' устр.', date: fmtDate(new Date()), amount: amountText});
       showToast('Оплата подтверждена! Подписка активирована.');
@@ -2121,16 +2151,21 @@ var addDevSlider = bindQtySlider(
   document.getElementById('qtySliderTrack'),
   document.getElementById('qtySliderFill'),
   document.getElementById('qtySliderThumb'),
-  state.devices,
+  1,
   function(val){
     document.getElementById('addDevVal').textContent = val;
-    document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.devices;
+    document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.devices.length;
     document.getElementById('addDevPrice').textContent = '+' + tierPriceFor(val) + ' ₽';
     document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
       card.classList.toggle('active', parseInt(card.getAttribute('data-tier'),10) === val);
     });
   }
 );
+document.querySelectorAll('[data-open="adddevices"]').forEach(function(trigger){
+  trigger.addEventListener('click', function(){
+    addDevSlider.set(state.devices.length || 1);
+  });
+});
 document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
   card.addEventListener('click', function(){
     addDevSlider.set(parseInt(card.getAttribute('data-tier'), 10));
@@ -2140,9 +2175,6 @@ document.getElementById('addDevConfirmBtn').addEventListener('click', function()
   // Примечание: в текущем API нет отдельного эндпоинта "добавить устройства
   // без продления" — расширение лимита фактически происходит через покупку
   // новой подписки нужной длительности с этим количеством устройств.
-  // Этот экран пока только локально обновляет счётчик на главном экране.
-  state.devices = addDevSlider.get();
-  renderHome();
   showToast('Чтобы закрепить новое количество устройств, оформите продление подписки с этим числом устройств.');
   closeSubpage(document.getElementById('subpage-adddevices'));
 });
