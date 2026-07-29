@@ -1653,8 +1653,16 @@ var mockDb = loadMockDb();
 // определению его устройства/браузера — чтобы в списке был не тестовый,
 // а настоящий телефон.
 (function syncOwnerDeviceLabel(){
-  var owner = mockDb.devices && mockDb.devices.filter(function(d){ return d.role === 'owner'; })[0];
-  if(owner){ owner.name = detectDeviceLabel(); }
+  if(!mockDb.devices || !mockDb.devices.length) return;
+  var owner = mockDb.devices.filter(function(d){ return d.role === 'owner'; })[0];
+  if(!owner){
+    // Совсем старые сохранённые тестовые данные — ещё до появления поля
+    // role: в них первый телефон в списке всегда и был владельцем.
+    owner = mockDb.devices[0];
+    owner.role = 'owner';
+  }
+  owner.name = detectDeviceLabel();
+  saveMockDb();
 })();
 function saveMockDb(){
   try{ localStorage.setItem(MOCK_KEY, JSON.stringify(mockDb)); }catch(e){}
