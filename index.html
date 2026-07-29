@@ -1994,6 +1994,7 @@ function renderHome(){
   document.getElementById('periodLabel').textContent = expired ? '' : ('из ' + state.periodDays);
   document.getElementById('progressFill').style.width = Math.max(0, Math.min(100, 100 - (state.daysLeft/state.periodDays*100))) + '%';
   document.getElementById('devicesVal').textContent = state.devices.length + '/' + state.deviceLimit;
+  renderDeviceLists(); // подстраховка: лимит/устройства могли обновиться отдельно от их загрузки
   document.getElementById('refLinkText2').textContent = state.refLink;
   document.getElementById('invitedFriendsTile') && (document.getElementById('invitedFriendsTile').textContent = state.invitedFriends);
   document.getElementById('refInvitedVal').textContent = state.invitedFriends;
@@ -2480,8 +2481,7 @@ document.getElementById('addDevConfirmBtn').addEventListener('click', function()
     }
     mockDb.status.phones = target;
     saveMockDb();
-    refreshDevices();
-    refreshStatusFromServer();
+    refreshStatusFromServer().then(refreshDevices);
     showToast('Тестовый режим: лимит устройств обновлён до ' + target + '. Новые телефоны подключаются по ссылке-приглашению.');
     closeSubpage(document.getElementById('subpage-adddevices'));
     return;
