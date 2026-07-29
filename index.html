@@ -1555,6 +1555,34 @@ MinionVPN использует облачные технологии для об
 (function(){
 "use strict";
 var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+// Определяем реальное устройство/платформу из браузера и Telegram WebApp.
+// ОГРАНИЧЕНИЕ (не наша прихоть, а политика приватности браузеров): веб-страница
+// НЕ может узнать точную модель телефона (например, "iPhone 15 Pro" или
+// "Samsung Galaxy S24") — начиная с последних версий iOS/Android эта
+// информация сайтам не отдаётся вообще. Точную модель видит только нативное
+// приложение через системный SDK. Здесь честно определяем то, что доступно:
+// операционную систему и то, из какого клиента Telegram открыто приложение
+// (tg.platform: 'ios' | 'android' | 'macos' | 'tdesktop' | 'weba' | 'web' | ...).
+function detectDeviceLabel(){
+  var ua = navigator.userAgent || '';
+  var os = 'Устройство';
+  if(/ipad/i.test(ua)) os = 'iPad';
+  else if(/iphone/i.test(ua)) os = 'iPhone';
+  else if(/android/i.test(ua)) os = 'Android';
+  else if(/macintosh|mac os x/i.test(ua)) os = 'Mac';
+  else if(/windows/i.test(ua)) os = 'Windows';
+  else if(/linux/i.test(ua)) os = 'Linux';
+
+  var platform = tg && tg.platform;
+  var client = '';
+  if(platform === 'ios' || platform === 'android') client = 'Telegram';
+  else if(platform === 'tdesktop') client = 'Telegram Desktop';
+  else if(platform === 'macos') client = 'Telegram macOS';
+  else if(platform === 'weba' || platform === 'web') client = 'Telegram Web';
+
+  return client ? (os + ' • ' + client) : os;
+}
 if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
   // блокируем pinch-zoom (жест сжатия/растяжения двумя пальцами)
 document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive:false });
@@ -1607,7 +1635,7 @@ function defaultMockDb(){
       period_days: 30
     },
     devices: [
-      { id: 'dev_1', name: 'Тестовый iPhone', connected_at: '2 дня назад', online: true, role: 'owner' }
+      { id: 'dev_1', name: detectDeviceLabel(), connected_at: 'только что', online: true, role: 'owner' }
     ],
     nextDeviceId: 2,
     referral_link: 'https://t.me/vpnpro_sale_bot?start=ref_TEST12345',
@@ -1620,6 +1648,14 @@ function defaultMockDb(){
   };
 }
 var mockDb = loadMockDb();
+// Если mock-данные уже были сохранены раньше (например, ещё со старым
+// именем "Тестовый iPhone"), приводим запись владельца к реальному
+// определению его устройства/браузера — чтобы в списке был не тестовый,
+// а настоящий телефон.
+(function syncOwnerDeviceLabel(){
+  var owner = mockDb.devices && mockDb.devices.filter(function(d){ return d.role === 'owner'; })[0];
+  if(owner){ owner.name = detectDeviceLabel(); }
+})();
 function saveMockDb(){
   try{ localStorage.setItem(MOCK_KEY, JSON.stringify(mockDb)); }catch(e){}
 }
@@ -2532,10 +2568,13 @@ document.getElementById('deviceInviteShareBtn').addEventListener('click', functi
 // Только для тестового режима: имитирует, что приглашённый человек перешёл
 // по ссылке и подключил своё устройство, — чтобы можно было проверить, как
 // заполняется список устройств, без реального второго телефона.
+// Имя устройства строим тем же detectDeviceLabel(), что и для владельца:
+// в реальном флоу его сгенерирует браузер ПРИГЛАШЁННОГО человека при переходе
+// по ссылке на его собственном телефоне, а не устройство того, кто приглашает.
 deviceInviteMockConnectBtn.addEventListener('click', function(){
   mockDb.devices.push({
     id: 'dev_' + (mockDb.nextDeviceId++),
-    name: 'Новый телефон',
+    name: detectDeviceLabel(),
     connected_at: 'только что',
     online: true,
     role: 'member'
