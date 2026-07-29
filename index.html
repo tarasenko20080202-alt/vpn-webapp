@@ -189,6 +189,11 @@ border-radius:50%;
 background:rgba(255,255,255,0.85);
 transform:rotate(-25deg);
 }
+.goggle:last-of-type::before{
+left:auto;
+right:12px;
+transform:rotate(25deg) scaleX(-1);
+}
 .goggle.pulse{ animation: blink 4.5s ease-in-out infinite; }
 @keyframes blink{
 0%, 92%, 100% { transform: scaleY(1); }
