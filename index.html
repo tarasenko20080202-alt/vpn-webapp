@@ -421,6 +421,19 @@ border-radius:999px;
 border:none;
 white-space:nowrap;
 }
+.device-row .dot{
+width:8px;height:8px;
+border-radius:50%;
+display:inline-block;
+margin-right:6px;
+background:var(--ok);
+box-shadow:0 0 0 3px rgba(47,158,82,0.18);
+vertical-align:middle;
+}
+.device-row .dot.off{
+background:var(--steel);
+box-shadow:0 0 0 3px rgba(138,154,168,0.18);
+}
 .tiles{
 display:grid;
 grid-template-columns:1fr 1fr;
@@ -2064,7 +2077,15 @@ renderHome();
 function deviceRowHtml(dev, withKick){
   var name = dev.name || 'Устройство';
   var isOwner = dev.role === 'owner';
-  var sub = dev.connected_at ? ('Подключено ' + dev.connected_at) : (dev.online ? 'В сети' : 'Не в сети');
+  var isOnline = !!dev.online;
+  var timeNote = dev.connected_at || '';
+  // Честный статус: онлайн/офлайн показывается ВСЕГДА, а не только когда
+  // нет времени последней активности — раньше при наличии connected_at
+  // статус "не в сети" мог быть незаметен.
+  var statusText = isOnline
+    ? ('В сети' + (timeNote ? ' • на связи ' + timeNote : ''))
+    : ('Не в сети' + (timeNote ? ' • последний раз ' + timeNote : ''));
+  var dotHtml = '<span class="dot'+(isOnline ? '' : ' off')+'"></span>';
   var right;
   if(isOwner){
     // Владелец не может отключить собственное основное устройство из этого списка.
@@ -2072,13 +2093,13 @@ function deviceRowHtml(dev, withKick){
   } else if(withKick){
     right = '<button class="kick-btn" data-action="kick-device" data-device-id="'+dev.id+'">Отключить</button>';
   } else {
-    right = '<div class="status-chip">'+(dev.online ? 'В сети' : 'Офлайн')+'</div>';
+    right = '<div class="status-chip">'+(isOnline ? 'В сети' : 'Офлайн')+'</div>';
   }
   return '' +
     '<div class="device-row" data-device="'+dev.id+'">' +
       '<div class="left">' +
         '<div class="ico">📱</div>' +
-        '<div><div class="name">'+name+'</div><div class="sub">'+sub+'</div></div>' +
+        '<div><div class="name">'+name+'</div><div class="sub">'+dotHtml+statusText+'</div></div>' +
       '</div>' +
       right +
     '</div>';
