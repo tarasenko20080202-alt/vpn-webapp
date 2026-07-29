@@ -1572,31 +1572,135 @@ var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : nu
 // Определяем реальное устройство/платформу из браузера и Telegram WebApp.
 // ОГРАНИЧЕНИЕ (не наша прихоть, а политика приватности браузеров): веб-страница
 // НЕ может узнать точную модель телефона (например, "iPhone 15 Pro" или
-// "Samsung Galaxy S24") — начиная с последних версий iOS/Android эта
-// информация сайтам не отдаётся вообще. Точную модель видит только нативное
-// приложение через системный SDK. Здесь честно определяем то, что доступно:
-// операционную систему и то, из какого клиента Telegram открыто приложение
-// (tg.platform: 'ios' | 'android' | 'macos' | 'tdesktop' | 'weba' | 'web' | ...).
+// "Samsung Galaxy S24 Ultra") — точную модель видит только нативное
+// приложение через системный SDK, а не сайт. То, что честно доступно и что
+// мы используем:
+//  - Android: модель обычно прямо зашита в сам User-Agent браузера
+//    (например "SM-G991B", "Pixel 7") — если она там есть, показываем как есть.
+//  - iOS: версию iOS браузер отдаёт точно; а вот "поколение" iPhone можно
+//    только ПРИБЛИЗИТЕЛЬНО оценить по физическому размеру экрана — у Apple
+//    ограниченный набор диагоналей панели на несколько моделей сразу,
+//    поэтому это диапазон возможных моделей, а не точное определение.
+//  - Windows/Mac: версия ОС, где браузер её не скрывает.
 function detectDeviceLabel(){
   var ua = navigator.userAgent || '';
-  var os = 'Устройство';
-  if(/ipad/i.test(ua)) os = 'iPad';
-  else if(/iphone/i.test(ua)) os = 'iPhone';
-  else if(/android/i.test(ua)) os = 'Android';
-  else if(/macintosh|mac os x/i.test(ua)) os = 'Mac';
-  else if(/windows/i.test(ua)) os = 'Windows';
-  else if(/linux/i.test(ua)) os = 'Linux';
-
   var platform = tg && tg.platform;
+  var parts = [];
+
+  var androidMatch = ua.match(/Android\s([\d.]+)[^;]*;\s*([^;)]+)\)/i);
+  if(androidMatch){
+    var androidVer = androidMatch[1];
+    var model = androidMatch[2].replace(/Build\/.*$/i, '').trim();
+    // На части устройств вместо модели в UA стоит просто "wv" (WebView) —
+    // тогда честной модели нет, показываем хотя бы версию Android.
+    if(model && !/^wv$/i.test(model) && !/^k$/i.test(model)){
+      parts.push(model);
+    } else {
+      parts.push('Android ' + androidVer);
+    }
+  } else if(/ipad/i.test(ua) || /iphone/i.test(ua)){
+    var kind = /ipad/i.test(ua) ? 'iPad' : 'iPhone';
+    var iosMatch = ua.match(/OS (\d+)_(\d+)/);
+    var iosVer = iosMatch ? (iosMatch[1] + '.' + iosMatch[2]) : '';
+    var gen = kind === 'iPhone' ? guessIphoneGeneration() : '';
+    parts.push(kind + (gen ? ' (' + gen + ')' : '') + (iosVer ? ', iOS ' + iosVer : ''));
+  } else if(/macintosh|mac os x/i.test(ua)){
+    parts.push('Mac');
+  } else if(/windows nt ([\d.]+)/i.test(ua)){
+    var winMatch = ua.match(/windows nt ([\d.]+)/i);
+    var winMap = { '10.0':'10/11', '6.3':'8.1', '6.2':'8', '6.1':'7' };
+    parts.push('Windows ' + (winMap[winMatch[1]] || winMatch[1]));
+  } else if(/linux/i.test(ua)){
+    parts.push('Linux');
+  } else {
+    parts.push('Устройство');
+  }
+
   var client = '';
   if(platform === 'ios' || platform === 'android') client = 'Telegram';
   else if(platform === 'tdesktop') client = 'Telegram Desktop';
   else if(platform === 'macos') client = 'Telegram macOS';
   else if(platform === 'weba' || platform === 'web') client = 'Telegram Web';
+  if(client) parts.push(client);
 
-  return client ? (os + ' • ' + client) : os;
+  return parts.join(' • ');
 }
-if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
+// Приблизительная оценка ПОКОЛЕНИЯ iPhone по физическому размеру экрана
+// (CSS-размер экрана × devicePixelRatio). Это не точное определение модели —
+// несколько соседних моделей Apple делят одну и ту же панель, поэтому
+// результат — диапазон вероятных моделей, а не конкретный iPhone.
+function guessIphoneGeneration(){
+  try{
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.round(window.screen.width * dpr);
+    var h = Math.round(window.screen.height * dpr);
+    var shortSide = Math.min(w, h), longSide = Math.max(w, h);
+    var key = shortSide + 'x' + longSide;
+    var map = {
+      '750x1334': 'iPhone 6/7/8/SE',
+      '1125x2436': 'iPhone X–13 mini',
+      '1242x2208': 'iPhone 6-8 Plus',
+      '828x1792': 'iPhone XR/11',
+      '1242x2688': 'iPhone XS/11 Pro Max',
+      '1170x2532': 'iPhone 12/13/14',
+      '1284x2778': 'iPhone 12/13 Pro Max, 14 Plus',
+      '1179x2556': 'iPhone 14 Pro/15/16',
+      '1290x2796': 'iPhone 14 Pro Max/15 Pro Max/16 Pro Max',
+      '1206x2622': 'iPhone 16 Pro',
+      '1320x2868': 'iPhone 16 Pro Max'
+    };
+    return map[key] || '';
+  }catch(e){ return ''; }
+}
+// Точнее определяем Windows/Linux, когда подключаются с компьютера.
+// Обычный navigator.userAgent НАРОЧНО "заморожен" в современных браузерах —
+// Windows 10 и Windows 11 в нём выглядят абсолютно одинаково
+// ("Windows NT 10.0"), архитектура и разрядность тоже скрыты. Это тоже
+// политика приватности, а не наша недоработка. Единственный официальный
+// способ уточнить — Client Hints API (navigator.userAgentData), который
+// поддерживают Chrome/Edge/Opera. В Safari и Firefox этого API нет вообще —
+// там останется обычная оценка "Windows 10/11" / "Linux" без уточнения.
+function refineComputerDeviceLabel(){
+  var uad = navigator.userAgentData;
+  if(!uad || !uad.getHighEntropyValues) return Promise.resolve(null);
+  if(uad.platform !== 'Windows' && uad.platform !== 'Linux') return Promise.resolve(null);
+  return uad.getHighEntropyValues(['platformVersion', 'architecture', 'bitness', 'fullVersionList'])
+    .then(function(info){
+      var label;
+      if(uad.platform === 'Windows'){
+        // По документации Chromium: platformVersion старше "13.0.0" — Windows 11.
+        var major = parseInt((info.platformVersion || '0').split('.')[0], 10);
+        label = major >= 13 ? 'Windows 11' : 'Windows 10';
+      } else {
+        label = 'Linux';
+      }
+      if(info.architecture){
+        label += ' (' + info.architecture + (info.bitness ? '-' + info.bitness : '') + ')';
+      }
+      var browser = '';
+      if(info.fullVersionList && info.fullVersionList.length){
+        var main = info.fullVersionList.filter(function(b){ return !/Not.?A.?Brand/i.test(b.brand); })[0];
+        if(main){ browser = main.brand + ' ' + main.version.split('.')[0]; }
+      }
+      return browser ? (label + ' • ' + browser) : label;
+    })
+    .catch(function(){ return null; });
+}
+// Дотягивает точную метку Windows/Linux асинхронно (Client Hints — это
+// Promise) и, если получилось, обновляет имя уже показанного устройства.
+// На iOS/Android/Mac и в Safari/Firefox просто ничего не делает — там и
+// так используется обычная (синхронная) оценка из detectDeviceLabel().
+function refineDeviceNameAsync(deviceId){
+  refineComputerDeviceLabel().then(function(label){
+    if(!label) return;
+    var dev = mockDb.devices.filter(function(d){ return d.id === deviceId; })[0];
+    if(!dev) return;
+    var client = dev.name.indexOf('•') !== -1 ? dev.name.slice(dev.name.lastIndexOf('•')) : '';
+    dev.name = client ? (label + ' ' + client) : label;
+    saveMockDb();
+    refreshDevices();
+  });
+}
   // блокируем pinch-zoom (жест сжатия/растяжения двумя пальцами)
 document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive:false });
 document.addEventListener('gesturechange', function(e){ e.preventDefault(); }, { passive:false });
@@ -2148,6 +2252,12 @@ function refreshDevices(){
   });
 }
 refreshDevices();
+// Если владелец сидит с компьютера (Windows/Linux), Client Hints уточнят
+// метку асинхронно и дорисуют список после того, как ответ придёт.
+(function(){
+  var owner = mockDb.devices.filter(function(d){ return d.role === 'owner'; })[0];
+  if(owner){ refineDeviceNameAsync(owner.id); }
+})();
 
 /* ---------- pull real subscription status from the backend ---------- */
 function applyStatus(status){
@@ -2601,8 +2711,9 @@ document.getElementById('deviceInviteShareBtn').addEventListener('click', functi
 // в реальном флоу его сгенерирует браузер ПРИГЛАШЁННОГО человека при переходе
 // по ссылке на его собственном телефоне, а не устройство того, кто приглашает.
 deviceInviteMockConnectBtn.addEventListener('click', function(){
+  var newId = 'dev_' + (mockDb.nextDeviceId++);
   mockDb.devices.push({
-    id: 'dev_' + (mockDb.nextDeviceId++),
+    id: newId,
     name: detectDeviceLabel(),
     connected_at: 'только что',
     online: true,
@@ -2610,6 +2721,7 @@ deviceInviteMockConnectBtn.addEventListener('click', function(){
   });
   saveMockDb();
   refreshDevices();
+  refineDeviceNameAsync(newId);
   showToast('Тестовый режим: новое устройство подключено по ссылке');
   deviceInviteSheetOverlay.classList.remove('open');
 });
