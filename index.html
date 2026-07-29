@@ -397,6 +397,30 @@ padding:6px 10px;
 border-radius:999px;
 border:none;
 }
+.device-row .owner-chip{
+font-size:10.5px;
+font-weight:800;
+color:var(--denim-1);
+background:rgba(59,110,165,0.12);
+padding:4px 10px;
+border-radius:999px;
+white-space:nowrap;
+}
+.device-row.add-slot{
+border-style:dashed;
+border-color:rgba(59,110,165,0.35);
+background:rgba(255,255,255,0.55);
+}
+.device-row .add-btn{
+font-size:10.5px;
+font-weight:800;
+color:var(--denim-1);
+background:rgba(59,110,165,0.12);
+padding:6px 12px;
+border-radius:999px;
+border:none;
+white-space:nowrap;
+}
 .tiles{
 display:grid;
 grid-template-columns:1fr 1fr;
@@ -814,7 +838,7 @@ border-top:4px solid var(--denim-0);
 .checkbox-row input{ width:20px; height:20px; accent-color: var(--denim-1); margin-top:1px; flex-shrink:0; }
 .checkbox-row label{ font-size:11.5px; color:var(--steel); font-weight:600; line-height:1.5; }
 
-/* ================= NEW: celebration overlay (bananas + fireworks) ================= */
+/* ================= celebration overlay (bananas + fireworks) ================= */
 .celebrate-overlay{
 position:fixed; inset:0; z-index:95; pointer-events:none; overflow:hidden;
 }
@@ -843,7 +867,7 @@ animation-fill-mode: forwards;
 100%{ transform: translate(var(--fx,0px), var(--fy,0px)) scale(0.25); opacity:0; }
 }
 
-/* ================= NEW: rain overlay (subscription not renewed) ================= */
+/* ================= rain overlay (subscription not renewed) ================= */
 .rain-overlay{
 position:fixed; inset:0; z-index:90; pointer-events:none; overflow:hidden;
 display:none;
@@ -866,9 +890,31 @@ animation-iteration-count: infinite;
 8%{ opacity:1; }
 100%{ transform:translateY(115vh); opacity:0.55; }
 }
+
+/* ================= test-mode banner ================= */
+.testbar{
+position:fixed; top:0; left:0; right:0; z-index:100;
+background: repeating-linear-gradient(135deg, #e8503a, #e8503a 12px, #c9402c 12px, #c9402c 24px);
+color:#fff; font-family:var(--font-body); font-weight:800; font-size:11.5px;
+text-align:center; padding:7px 10px calc(7px + env(safe-area-inset-top));
+letter-spacing:0.3px;
+display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+box-shadow:0 2px 8px rgba(0,0,0,0.25);
+}
+.testbar button{
+background:rgba(255,255,255,0.22); color:#fff; border:1px solid rgba(255,255,255,0.5);
+border-radius:999px; font-size:10.5px; font-weight:800; padding:4px 10px;
+}
 </style>
 </head>
 <body>
+
+<!-- ===================== TEST MODE BANNER ===================== -->
+<div class="testbar" id="testbar">
+🧪 ТЕСТОВЫЙ РЕЖИМ — оплата эмулируется, деньги не списываются
+<button type="button" id="testResetBtn">Сбросить тестовые данные</button>
+</div>
+
 <div class="app">
 <div class="topbar">
 <div class="brand"><span class="goggle-dot"></span>MinionVPN</div>
@@ -1432,7 +1478,7 @@ MinionVPN использует облачные технологии для об
 </div>
 </div>
 
-<!-- ===================== NEW: PAYMENT WAITING SHEET ===================== -->
+<!-- ===================== PAYMENT WAITING SHEET ===================== -->
 <div class="sheet-overlay" id="paymentWaitOverlay">
 <div class="sheet">
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
@@ -1443,7 +1489,7 @@ MinionVPN использует облачные технологии для об
 <div style="display:flex; justify-content:center; padding:6px 0 16px;">
 <div class="pay-spinner"></div>
 </div>
-<div style="text-align:center; font-size:12px; color:var(--steel); font-weight:700;">
+<div style="text-align:center; font-size:12px; color:var(--steel); font-weight:700;" id="paymentWaitHint">
 Не закрывайте окно — оплата может занять до минуты
 </div>
 </div>
@@ -1480,7 +1526,26 @@ MinionVPN использует облачные технологии для об
 </div>
 </div>
 
-<!-- ===================== NEW: RAIN + CELEBRATION OVERLAYS ===================== -->
+<!-- ===================== DEVICE INVITE SHEET ===================== -->
+<div class="sheet-overlay" id="deviceInviteSheetOverlay">
+<div class="sheet">
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+<div class="sheet-title" style="margin-bottom:0;">Добавить телефон</div>
+<button class="icon-btn" id="deviceInviteCloseBtn">✕</button>
+</div>
+<div class="txt" style="font-size:13px; font-weight:700; color:var(--ink); margin-bottom:14px; line-height:1.4;">
+Это место в вашей подписке ещё свободно. Отправьте ссылку человеку, чей телефон нужно подключить — он откроет её в Telegram и настроит VPN на своём устройстве отдельно от вашего.
+</div>
+<div class="field-row">
+<input type="text" id="deviceInviteLinkInput" readonly value="">
+<button class="field-btn" id="deviceInviteCopyBtn">Копировать</button>
+</div>
+<button class="cta-secondary" id="deviceInviteShareBtn" style="margin-top:10px;">Поделиться в Telegram</button>
+<button class="cta-secondary" id="deviceInviteMockConnectBtn" style="margin-top:10px; display:none;">Тест: эмулировать подключение</button>
+</div>
+</div>
+
+<!-- ===================== RAIN + CELEBRATION OVERLAYS ===================== -->
 <div class="rain-overlay" id="rainOverlay"></div>
 <div class="celebrate-overlay" id="celebrateOverlay"></div>
 
@@ -1502,11 +1567,80 @@ document.addEventListener('touchmove', function(e){
 
 document.addEventListener('dblclick', function(e){ e.preventDefault(); }, { passive:false });
 
-/* ================= backend integration (bot/api.py) ================= */
-// Temporary dev tunnel (pyngrok) -> local uvicorn on :8000.
-// Replace with your real HTTPS domain once you deploy for production.
+/* =====================================================================
+   ТЕСТОВЫЙ РЕЖИМ (MOCK_MODE)
+   -----------------------------------------------------------------
+   Это тестовая версия боевого файла (index.html). Пока MOCK_MODE = true,
+   ни один запрос не уходит на реальный backend (bot/api.py) и оплата
+   НИКОГДА не списывается по-настоящему — вся "оплата", устройства и
+   статус подписки эмулируются прямо в браузере и хранятся в
+   localStorage, чтобы переживать перезагрузку страницы.
+
+   Когда нужно прогнать этот же файл против реального бэкенда — поставьте
+   MOCK_MODE = false, и приложение начнёт стучаться в API_BASE как обычно
+   (см. функцию apiCall ниже). Именно так выглядит боевой режим —
+   в проде этот флаг всегда false и testbar скрыт.
+   ===================================================================== */
+var MOCK_MODE = true;
+// Временный dev-туннель (pyngrok) -> локальный uvicorn на :8000.
+// Замените на реальный HTTPS-домен при переходе в MOCK_MODE = false.
 var API_BASE = "https://junior-protozoan-width.ngrok-free.dev";
 
+/* ---------- mock "база данных" в localStorage ---------- */
+var MOCK_KEY = 'mvpn_mock_db_v1';
+function loadMockDb(){
+  try{
+    var raw = localStorage.getItem(MOCK_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return defaultMockDb();
+}
+function defaultMockDb(){
+  var now = new Date();
+  var expires = new Date(now.getTime() + 12*24*60*60*1000); // тестовая подписка: осталось 12 дней из 30
+  return {
+    status: {
+      expires: expires.toISOString(),
+      active: true,
+      phones: 1,
+      is_test: false,
+      period_days: 30
+    },
+    devices: [
+      { id: 'dev_1', name: 'Тестовый iPhone', connected_at: '2 дня назад', online: true, role: 'owner' }
+    ],
+    nextDeviceId: 2,
+    referral_link: 'https://t.me/vpnpro_sale_bot?start=ref_TEST12345',
+    invitedFriends: 2,
+    refDays: 6,
+    history: [
+      {name:'1 месяц, 1 устройство', date:'05.06.2026', amount:'120 ₽'},
+      {name:'3 месяца, 1 устройство', date:'05.03.2026', amount:'300 ₽'}
+    ]
+  };
+}
+var mockDb = loadMockDb();
+function saveMockDb(){
+  try{ localStorage.setItem(MOCK_KEY, JSON.stringify(mockDb)); }catch(e){}
+}
+function resetMockDb(){
+  mockDb = defaultMockDb();
+  saveMockDb();
+  localStorage.removeItem('mvpn_period_days');
+  showToast('Тестовые данные сброшены');
+  refreshStatusFromServer().then(refreshDevices).then(function(){
+    state.history = mockDb.history.slice();
+    state.invitedFriends = mockDb.invitedFriends;
+    state.refDays = mockDb.refDays;
+    renderHome();
+  });
+}
+
+function mockDelay(ms){
+  return new Promise(function(resolve){ setTimeout(resolve, ms); });
+}
+
+/* ---------- обёртка над реальным вызовом API (используется только когда MOCK_MODE = false) ---------- */
 function apiCall(path, options){
   options = options || {};
   var headers = Object.assign(
@@ -1538,6 +1672,14 @@ function apiCall(path, options){
 
 // Main screen: load subscription status. me.status = { expires, active, phones, is_test, period_days, months }
 function loadStatus(){
+  if(MOCK_MODE){
+    return mockDelay(300).then(function(){
+      return { status: mockDb.status, referral_link: mockDb.referral_link };
+    }).then(function(me){
+      if(me && me.referral_link){ state.refLink = me.referral_link.replace(/^https?:\/\//, ''); }
+      return (me && me.status) || me;
+    });
+  }
   return apiCall("/api/me").then(function(me){
     if(me && me.referral_link){ state.refLink = me.referral_link.replace(/^https?:\/\//, ''); }
     return (me && me.status) || me;
@@ -1545,17 +1687,65 @@ function loadStatus(){
 }
 
 // Real connected devices list: GET /api/devices -> [{id, name, connected_at, online}, ...]
-// NOTE: this endpoint needs to exist in bot/api.py — see chat notes.
+// NOTE: в реальном bot/api.py этого эндпоинта пока нет — см. заметки в чате.
 function loadDevices(){
+  if(MOCK_MODE){
+    return mockDelay(300).then(function(){ return mockDb.devices.slice(); });
+  }
   return apiCall("/api/devices");
 }
 
 function disconnectDevice(id){
+  if(MOCK_MODE){
+    return mockDelay(300).then(function(){
+      mockDb.devices = mockDb.devices.filter(function(d){ return d.id !== id; });
+      mockDb.status.phones = mockDb.devices.length;
+      saveMockDb();
+      return { ok: true };
+    });
+  }
   return apiCall("/api/devices/" + encodeURIComponent(id), { method: "DELETE" });
+}
+
+// Ссылка-приглашение на одно свободное место в лимите устройств. Токен
+// одноразовый: человек, перешедший по ней в Telegram-бота, подключает
+// СВОЁ устройство отдельно от устройства владельца.
+// NOTE: в реальном bot/api.py этого эндпоинта пока нет — нужно завести на бэкенде.
+function generateDeviceInviteLink(){
+  if(MOCK_MODE){
+    return mockDelay(250).then(function(){
+      var token = Math.random().toString(36).slice(2, 10);
+      return 'https://t.me/MinionVPN_bot?start=adddevice_' + token;
+    });
+  }
+  return apiCall("/api/device_invite", { method: "POST" }).then(function(res){
+    return res && res.link;
+  });
 }
 
 // "Скачать конфиг" button
 function downloadConfig(){
+  if(MOCK_MODE){
+    var fakeConfig =
+      "# ТЕСТОВЫЙ конфиг, сгенерирован в тестовом режиме — реально никуда не подключит\n" +
+      "[Interface]\n" +
+      "PrivateKey = TEST_CLIENT_PRIVATE_KEY_MOCK\n" +
+      "Address = 10.66.0.2/32\n" +
+      "DNS = 1.1.1.1\n\n" +
+      "[Peer]\n" +
+      "PublicKey = TEST_SERVER_PUBLIC_KEY_MOCK\n" +
+      "Endpoint = 203.0.113.10:51820\n" +
+      "AllowedIPs = 0.0.0.0/0\n";
+    return mockDelay(200).then(function(){
+      var blob = new Blob([fakeConfig], { type: "text/plain" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "MinionVPN-TEST.conf";
+      a.click();
+      return fakeConfig;
+    });
+  }
   return apiCall("/api/config").then(function(configText){
     var blob = new Blob([configText], { type: "text/plain" });
     var url = URL.createObjectURL(blob);
@@ -1569,20 +1759,63 @@ function downloadConfig(){
 
 // "Получить тест (24ч)" button
 function activateTest(){
+  if(MOCK_MODE){
+    return mockDelay(400).then(function(){
+      var until = new Date(Date.now() + 24*60*60*1000);
+      mockDb.status = { expires: until.toISOString(), active: true, phones: 1, is_test: true, period_days: 1 };
+      saveMockDb();
+      return { ok: true };
+    });
+  }
   return apiCall("/api/test", { method: "POST" });
 }
 
-// Buy flow: open YooMoney's payment page (tg.openLink keeps the user inside
-// Telegram's browser) and poll for confirmation via /api/check_payment.
+// Buy flow: в реальном режиме открывает страницу оплаты ЮMoney и опрашивает
+// /api/check_payment. В тестовом режиме оплата "проходит" сама через
+// пару секунд — деньги нигде не списываются, это просто эмуляция для
+// проверки экранов и кнопок.
 function buySubscription(months, devices){
+  if(MOCK_MODE){
+    openPaymentWaitSheet('#mock-payment');
+    return mockDelay(1900).then(function(){
+      closePaymentWaitSheet();
+      var now = new Date();
+      var base = mockDb.status.active && new Date(mockDb.status.expires) > now
+        ? new Date(mockDb.status.expires)
+        : now;
+      var newExpiry = new Date(base);
+      newExpiry.setDate(newExpiry.getDate() + months*30);
+      mockDb.status.expires = newExpiry.toISOString();
+      mockDb.status.active = true;
+      mockDb.status.is_test = false;
+      mockDb.status.phones = devices;
+      mockDb.status.period_days = months*30;
+
+      // ВАЖНО: покупка расширения только поднимает ЛИМИТ устройств (phones).
+      // Реальные устройства в mockDb.devices НЕ создаются автоматически —
+      // они появляются по одному только тогда, когда владелец или
+      // приглашённый им человек реально подключается по ссылке-приглашению
+      // (см. generateDeviceInviteLink / кнопка "Добавить телефон" в списке
+      // устройств). Если новый лимит меньше уже подключённых реальных
+      // устройств — лишние отключаем.
+      while(mockDb.devices.length > devices){
+        mockDb.devices.pop();
+      }
+      mockDb.history.unshift({
+        name: months + ' мес., ' + devices + ' устр. (тест)',
+        date: fmtDate(new Date()),
+        amount: '—'
+      });
+      saveMockDb();
+      return true;
+    });
+  }
   return apiCall("/api/buy", {
     method: "POST",
     body: JSON.stringify({ months: months, devices: devices }),
   }).then(function(pay){
     // pay.url — реальная ссылка на оплату из ЮMoney, отдаётся бэкендом.
-    // как на видео: сначала подтверждение "Открыть ссылку?"
     confirmOpenLink(pay.url);
-    // затем шторка "Ожидание оплаты" со спиннером
     openPaymentWaitSheet(pay.url);
 
     var attempts = 0;
@@ -1606,7 +1839,14 @@ function buySubscription(months, devices){
 
 function openPaymentWaitSheet(payUrl){
   document.getElementById('paymentWaitOverlay').classList.add('open');
+  var hint = document.getElementById('paymentWaitHint');
+  if(hint){
+    hint.textContent = MOCK_MODE
+      ? 'Тестовый режим: оплата подтвердится сама через пару секунд'
+      : 'Не закрывайте окно — оплата может занять до минуты';
+  }
   document.getElementById('paymentWaitOpenLinkBtn').onclick = function(){
+    if(MOCK_MODE){ showToast('Тестовый режим — реальная ссылка на оплату не открывается'); return; }
     if(tg && tg.openLink){ try{ tg.openLink(payUrl); return; }catch(e){} }
     window.open(payUrl, '_blank');
   };
@@ -1644,14 +1884,11 @@ var state = {
   periodDays: (!isNaN(savedPeriodDays) && savedPeriodDays > 0) ? savedPeriodDays : 30,
   daysLeft: 12,
   devices: [], // real devices, filled by refreshDevices()
-  invitedFriends: 0,
-  refDays: 0,
-  refLink: 't.me/vpnpro_sale_bot?start=ref_' + Math.random().toString(36).slice(2,8),
-  history: [
-    {name:'1 месяц, 1 устройство', date:'05.06.2026', amount:'120 ₽'},
-    {name:'3 месяца, 1 устройство', date:'05.03.2026', amount:'300 ₽'},
-    {name:'1 месяц, 1 устройство', date:'05.02.2026', amount:'120 ₽'}
-  ]
+  deviceLimit: (mockDb.status && mockDb.status.phones) || 1, // сколько телефонов оплачено (лимит), обновляется из applyStatus()
+  invitedFriends: mockDb.invitedFriends || 0,
+  refDays: mockDb.refDays || 0,
+  refLink: mockDb.referral_link ? mockDb.referral_link.replace(/^https?:\/\//, '') : ('t.me/vpnpro_sale_bot?start=ref_' + Math.random().toString(36).slice(2,8)),
+  history: mockDb.history ? mockDb.history.slice() : []
 };
 
 function fmtDate(d){
@@ -1659,7 +1896,7 @@ function fmtDate(d){
   return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
 }
 
-/* ================= NEW: celebration (bananas + fireworks) ================= */
+/* ================= celebration (bananas + fireworks) ================= */
 var celebrateOverlay = document.getElementById('celebrateOverlay');
 function celebratePurchase(){
   if(!celebrateOverlay) return;
@@ -1709,7 +1946,7 @@ function celebratePurchase(){
   setTimeout(function(){ burst(w*0.5, h*0.38); }, 520);
 }
 
-/* ================= NEW: rain (subscription not renewed) ================= */
+/* ================= rain (subscription not renewed) ================= */
 var rainOverlay = document.getElementById('rainOverlay');
 var rainBuilt = false;
 function buildRain(){
@@ -1756,7 +1993,7 @@ function renderHome(){
   document.getElementById('daysLeftLabel').textContent = expired ? 'Подписка не продлена' : (state.daysLeft + ' дней осталось');
   document.getElementById('periodLabel').textContent = expired ? '' : ('из ' + state.periodDays);
   document.getElementById('progressFill').style.width = Math.max(0, Math.min(100, 100 - (state.daysLeft/state.periodDays*100))) + '%';
-  document.getElementById('devicesVal').textContent = state.devices.length;
+  document.getElementById('devicesVal').textContent = state.devices.length + '/' + state.deviceLimit;
   document.getElementById('refLinkText2').textContent = state.refLink;
   document.getElementById('invitedFriendsTile') && (document.getElementById('invitedFriendsTile').textContent = state.invitedFriends);
   document.getElementById('refInvitedVal').textContent = state.invitedFriends;
@@ -1781,10 +2018,17 @@ renderHome();
 /* ---------- real connected devices (home + settings tabs) ---------- */
 function deviceRowHtml(dev, withKick){
   var name = dev.name || 'Устройство';
+  var isOwner = dev.role === 'owner';
   var sub = dev.connected_at ? ('Подключено ' + dev.connected_at) : (dev.online ? 'В сети' : 'Не в сети');
-  var right = withKick
-    ? '<button class="kick-btn" data-action="kick-device" data-device-id="'+dev.id+'">Отключить</button>'
-    : '<div class="status-chip">'+(dev.online ? 'В сети' : 'Офлайн')+'</div>';
+  var right;
+  if(isOwner){
+    // Владелец не может отключить собственное основное устройство из этого списка.
+    right = '<div class="owner-chip">Владелец</div>';
+  } else if(withKick){
+    right = '<button class="kick-btn" data-action="kick-device" data-device-id="'+dev.id+'">Отключить</button>';
+  } else {
+    right = '<div class="status-chip">'+(dev.online ? 'В сети' : 'Офлайн')+'</div>';
+  }
   return '' +
     '<div class="device-row" data-device="'+dev.id+'">' +
       '<div class="left">' +
@@ -1794,17 +2038,37 @@ function deviceRowHtml(dev, withKick){
       right +
     '</div>';
 }
+// Свободное, но ещё не занятое место в оплаченном лимите устройств —
+// показывается вместо "виртуального" телефона и ведёт на ссылку-приглашение,
+// по которой конкретный человек сам подключит своё устройство.
+function addSlotRowHtml(slotIndex){
+  return '' +
+    '<div class="device-row add-slot">' +
+      '<div class="left">' +
+        '<div class="ico">➕</div>' +
+        '<div><div class="name">Свободное место</div><div class="sub">Ещё не подключено</div></div>' +
+      '</div>' +
+      '<button class="add-btn" data-action="invite-device" data-slot-index="'+slotIndex+'">Добавить телефон</button>' +
+    '</div>';
+}
 function renderDeviceLists(){
   var home = document.getElementById('deviceList');
   var settings = document.getElementById('settingsDeviceList');
-  if(!state.devices.length){
+  var freeSlots = Math.max(0, state.deviceLimit - state.devices.length);
+  if(!state.devices.length && !freeSlots){
     var empty = '<div class="empty-state"><div class="ico">📵</div><div>Нет подключённых устройств</div></div>';
     home.innerHTML = empty;
     settings.innerHTML = empty;
     return;
   }
-  home.innerHTML = state.devices.map(function(d){ return deviceRowHtml(d, false); }).join('');
-  settings.innerHTML = state.devices.map(function(d){ return deviceRowHtml(d, true); }).join('');
+  var rowsHome = state.devices.map(function(d){ return deviceRowHtml(d, false); });
+  var rowsSettings = state.devices.map(function(d){ return deviceRowHtml(d, true); });
+  for(var i=0; i<freeSlots; i++){
+    rowsHome.push(addSlotRowHtml(i));
+    rowsSettings.push(addSlotRowHtml(i));
+  }
+  home.innerHTML = rowsHome.join('');
+  settings.innerHTML = rowsSettings.join('');
 }
 function refreshDevices(){
   return loadDevices().then(function(list){
@@ -1837,6 +2101,7 @@ function applyStatus(status){
   }
   state.active = !!status.active;
   state.isTest = !!status.is_test;
+  if(status.phones){ state.deviceLimit = status.phones; }
 }
 function refreshStatusFromServer(){
   return loadStatus().then(function(status){
@@ -1849,7 +2114,7 @@ function refreshStatusFromServer(){
 }
 refreshStatusFromServer();
 
-/* Telegram user info */
+/* Telegram user info (в тестовом режиме, если initData пуст, подставляем тестового пользователя, но сохраняем поддержку photo_url как в проде) */
 (function(){
   try{
     var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
@@ -1867,6 +2132,10 @@ refreshStatusFromServer();
       }
       document.getElementById('profileName').textContent = (u.first_name||'') + (u.last_name?(' '+u.last_name):'');
       document.getElementById('profileUsername').textContent = u.username ? ('@'+u.username) : ('id: '+u.id);
+    } else if(MOCK_MODE){
+      document.getElementById('avatarInitial').textContent = 'Т';
+      document.getElementById('profileName').textContent = 'Тестовый пользователь';
+      document.getElementById('profileUsername').textContent = '@test_tester';
     }
   }catch(e){}
 })();
@@ -2070,7 +2339,7 @@ function recalcBuyTotal(){
   return total;
 }
 
-/* --- шторка "Изменить" со слайдером, как на видео --- */
+/* --- шторка "Изменить" со слайдером --- */
 var buyDeviceSheetOverlay = document.getElementById('buyDeviceSheetOverlay');
 var buyDevSlider = bindQtySlider(
   document.getElementById('buyQtySliderTrack'),
@@ -2127,6 +2396,12 @@ document.getElementById('buyConfirmBtn').addEventListener('click', function(){
   document.getElementById('sheetAmount').textContent = recalcBuyTotal() + ' ₽';
   document.getElementById('confirmSheetOverlay').classList.add('open');
 });
+// ФИКС: в исходном боевом файле у этой кнопки не было обработчика —
+// шторка подтверждения не закрывалась по "Отмена". Добавлено здесь и
+// должно быть перенесено обратно в боевой файл.
+document.getElementById('sheetCancelBtn').addEventListener('click', function(){
+  document.getElementById('confirmSheetOverlay').classList.remove('open');
+});
 document.getElementById('paymentWaitCloseBtn').addEventListener('click', function(){
   closePaymentWaitSheet();
 });
@@ -2136,7 +2411,7 @@ document.getElementById('sheetPayBtn').addEventListener('click', function(){
   var amountText = document.getElementById('sheetAmount').textContent;
   var payBtn = document.getElementById('sheetPayBtn');
   payBtn.setAttribute('disabled', 'true');
-  showToast('Открываем оплату…');
+  showToast(MOCK_MODE ? 'Эмулируем оплату…' : 'Открываем оплату…');
 
   buySubscription(months, buyDevices).then(function(paid){
     payBtn.removeAttribute('disabled');
@@ -2154,6 +2429,7 @@ document.getElementById('sheetPayBtn').addEventListener('click', function(){
     }).then(function(){
       renderHome();
       state.history.unshift({name: months+' мес., '+buyDevices+' устр.', date: fmtDate(new Date()), amount: amountText});
+      if(MOCK_MODE){ mockDb.history = state.history.slice(); saveMockDb(); }
       showToast('Оплата подтверждена! Подписка активирована.');
       celebratePurchase();
       closeSubpage(document.getElementById('subpage-buy'));
@@ -2173,7 +2449,7 @@ var addDevSlider = bindQtySlider(
   1,
   function(val){
     document.getElementById('addDevVal').textContent = val;
-    document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.devices.length;
+    document.getElementById('addDevSub').textContent = 'Сейчас в подписке: ' + state.deviceLimit;
     document.getElementById('addDevPrice').textContent = '+' + tierPriceFor(val) + ' ₽';
     document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
       card.classList.toggle('active', parseInt(card.getAttribute('data-tier'),10) === val);
@@ -2182,7 +2458,7 @@ var addDevSlider = bindQtySlider(
 );
 document.querySelectorAll('[data-open="adddevices"]').forEach(function(trigger){
   trigger.addEventListener('click', function(){
-    addDevSlider.set(state.devices.length || 1);
+    addDevSlider.set(state.deviceLimit || 1);
   });
 });
 document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
@@ -2191,11 +2467,83 @@ document.querySelectorAll('#tierGrid .plan-card').forEach(function(card){
   });
 });
 document.getElementById('addDevConfirmBtn').addEventListener('click', function(){
+  // В тестовом режиме сразу применяем новый ЛИМИТ устройств к mock-подписке,
+  // чтобы можно было проверить экран без прохождения полного флоу оплаты.
+  // Реальные телефоны при этом НЕ создаются — только увеличивается число
+  // свободных мест "Добавить телефон" в списке устройств; каждое новое
+  // устройство появляется только когда кто-то реально подключается по
+  // ссылке-приглашению.
+  if(MOCK_MODE){
+    var target = addDevSlider.get();
+    while(mockDb.devices.length > target){
+      mockDb.devices.pop();
+    }
+    mockDb.status.phones = target;
+    saveMockDb();
+    refreshDevices();
+    refreshStatusFromServer();
+    showToast('Тестовый режим: лимит устройств обновлён до ' + target + '. Новые телефоны подключаются по ссылке-приглашению.');
+    closeSubpage(document.getElementById('subpage-adddevices'));
+    return;
+  }
   // Примечание: в текущем API нет отдельного эндпоинта "добавить устройства
   // без продления" — расширение лимита фактически происходит через покупку
   // новой подписки нужной длительности с этим количеством устройств.
   showToast('Чтобы закрепить новое количество устройств, оформите продление подписки с этим числом устройств.');
   closeSubpage(document.getElementById('subpage-adddevices'));
+});
+
+/* ================= DEVICE INVITE SHEET (add a phone to a free paid slot) ================= */
+var deviceInviteSheetOverlay = document.getElementById('deviceInviteSheetOverlay');
+var deviceInviteMockConnectBtn = document.getElementById('deviceInviteMockConnectBtn');
+document.addEventListener('click', function(e){
+  var slotBtn = e.target.closest('[data-action="invite-device"]');
+  if(!slotBtn) return;
+  document.getElementById('deviceInviteLinkInput').value = 'Генерируем ссылку…';
+  deviceInviteMockConnectBtn.style.display = MOCK_MODE ? 'block' : 'none';
+  deviceInviteSheetOverlay.classList.add('open');
+  generateDeviceInviteLink().then(function(link){
+    document.getElementById('deviceInviteLinkInput').value = link || '';
+  }).catch(function(err){
+    console.warn('generateDeviceInviteLink failed:', err);
+    document.getElementById('deviceInviteLinkInput').value = '';
+    showToast('Не удалось получить ссылку приглашения');
+  });
+});
+document.getElementById('deviceInviteCloseBtn').addEventListener('click', function(){
+  deviceInviteSheetOverlay.classList.remove('open');
+});
+document.getElementById('deviceInviteCopyBtn').addEventListener('click', function(){
+  var link = document.getElementById('deviceInviteLinkInput').value;
+  if(!link) return;
+  copyText(link);
+});
+document.getElementById('deviceInviteShareBtn').addEventListener('click', function(){
+  var link = document.getElementById('deviceInviteLinkInput').value;
+  if(!link) return;
+  if(tg && tg.openTelegramLink){
+    try{
+      tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Подключи VPN на своём телефоне'));
+      return;
+    }catch(e){}
+  }
+  copyText(link);
+});
+// Только для тестового режима: имитирует, что приглашённый человек перешёл
+// по ссылке и подключил своё устройство, — чтобы можно было проверить, как
+// заполняется список устройств, без реального второго телефона.
+deviceInviteMockConnectBtn.addEventListener('click', function(){
+  mockDb.devices.push({
+    id: 'dev_' + (mockDb.nextDeviceId++),
+    name: 'Новый телефон',
+    connected_at: 'только что',
+    online: true,
+    role: 'member'
+  });
+  saveMockDb();
+  refreshDevices();
+  showToast('Тестовый режим: новое устройство подключено по ссылке');
+  deviceInviteSheetOverlay.classList.remove('open');
 });
 
 /* ================= SETUP SUBPAGE ================= */
@@ -2218,6 +2566,7 @@ document.querySelectorAll('#platformTabs .platform-tab').forEach(function(tab){
   });
 });
 function confirmOpenLink(url){
+  if(MOCK_MODE){ showToast('Тестовый режим: ссылка не открывается по-настоящему'); return; }
   if(tg && tg.showConfirm){
     try{ tg.showConfirm('Открыть ссылку?\n' + url, function(ok){ if(ok && tg.openLink){ tg.openLink(url); } }); return; }catch(e){}
   }
@@ -2236,7 +2585,7 @@ document.getElementById('setupOpenHelpBtn').addEventListener('click', function()
 
 /* ================= PAYMENTS SUBPAGE ================= */
 document.getElementById('addCardBtn').addEventListener('click', function(){
-  showToast('Открывается форма привязки карты…');
+  showToast(MOCK_MODE ? 'Тестовый режим: форма привязки карты не открывается' : 'Открывается форма привязки карты…');
 });
 
 /* ================= HISTORY SUBPAGE ================= */
@@ -2259,6 +2608,7 @@ document.querySelector('[data-open="history"]').addEventListener('click', render
 
 /* ================= BACKUP ACCESS SUBPAGE ================= */
 document.getElementById('backupChannelBtn').addEventListener('click', function(){
+  if(MOCK_MODE){ showToast('Тестовый режим: переход на канал не выполняется'); return; }
   var url = 'https://t.me/MinionVPN1';
   if(tg && tg.openTelegramLink){ try{ tg.openTelegramLink(url); return; }catch(e){} }
   window.open(url, '_blank');
@@ -2282,10 +2632,21 @@ document.querySelectorAll('#faqList .faq-q').forEach(function(q){
   });
 });
 document.getElementById('openSupportChatBtn').addEventListener('click', function(){
+  if(MOCK_MODE){ showToast('Тестовый режим: чат поддержки не открывается'); return; }
   var url = 'https://t.me/Johan_Friend';
   if(tg && tg.openTelegramLink){ try{ tg.openTelegramLink(url); return; }catch(e){} }
   window.open(url, '_blank');
 });
+
+/* ================= сброс тестовых данных ================= */
+var testResetBtn = document.getElementById('testResetBtn');
+if(testResetBtn){
+  if(!MOCK_MODE){
+    document.getElementById('testbar').style.display = 'none';
+  } else {
+    testResetBtn.addEventListener('click', resetMockDb);
+  }
+}
 
 /* ---------- keep rain/expiry state fresh while app is open ---------- */
 setInterval(renderHome, 60000);
