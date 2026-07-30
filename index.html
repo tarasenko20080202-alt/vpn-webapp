@@ -1034,6 +1034,13 @@ border-radius:999px; font-size:10.5px; font-weight:800; padding:4px 10px;
 </div>
 <button class="switch" data-switch="saver"></button>
 </div>
+<div class="switch-row">
+<div>
+<div class="txt">Семейная подписка</div>
+<div class="sub" id="familyModeSub">Каждый участник платит свою долю сам</div>
+</div>
+<button class="switch" id="familyModeSwitch" data-switch="family"></button>
+</div>
 
 <div class="section-label">Ваши устройства</div>
 <div id="settingsDeviceList">
@@ -1568,12 +1575,23 @@ MinionVPN использует облачные технологии для об
 <div class="txt" style="font-size:13px; font-weight:700; color:var(--ink); margin-bottom:14px; line-height:1.4;">
 Это место в вашей подписке ещё свободно. Отправьте ссылку человеку, чей телефон нужно подключить — он откроет её в Telegram и настроит VPN на своём устройстве отдельно от вашего.
 </div>
+<div id="deviceInviteShareInfo" style="display:none; font-size:12.5px; font-weight:800; color:var(--denim-1); background:rgba(59,110,165,0.10); padding:10px 12px; border-radius:12px; margin-bottom:12px;"></div>
 <div class="field-row">
 <input type="text" id="deviceInviteLinkInput" readonly value="">
 <button class="field-btn" id="deviceInviteCopyBtn">Копировать</button>
 </div>
 <button class="cta-secondary" id="deviceInviteShareBtn" style="margin-top:10px;">Поделиться в Telegram</button>
 <button class="cta-secondary" id="deviceInviteMockConnectBtn" style="margin-top:10px; display:none;">Тест: эмулировать подключение</button>
+</div>
+</div>
+
+<!-- ===================== GENERIC DELETE-CONFIRM SHEET ===================== -->
+<div class="sheet-overlay" id="deleteConfirmSheetOverlay">
+<div class="sheet">
+<div class="sheet-title" id="deleteConfirmTitle">Удалить устройство?</div>
+<div class="txt" id="deleteConfirmText" style="font-size:13px; font-weight:700; color:var(--ink); margin-bottom:16px; line-height:1.4;"></div>
+<button class="cta-primary" id="deleteConfirmYesBtn" style="background:var(--danger);"><span>Удалить</span></button>
+<button class="cta-secondary" id="deleteConfirmNoBtn" style="margin-top:10px;"><span>Отмена</span></button>
 </div>
 </div>
 
@@ -1771,6 +1789,10 @@ function defaultMockDb(){
       { id: 'dev_1', name: detectDeviceLabel(), connected_at: 'только что', online: true, role: 'owner' }
     ],
     nextDeviceId: 2,
+    // Семейная (групповая) подписка: если включена, каждый новый участник
+    // платит свою долю сам (см. familySharePrice/deviceInviteSheetOverlay),
+    // а не подключается бесплатно за счёт владельца.
+    family: { enabled: false },
     referral_link: 'https://t.me/vpnpro_sale_bot?start=ref_TEST12345',
     invitedFriends: 2,
     refDays: 6,
@@ -1781,6 +1803,7 @@ function defaultMockDb(){
   };
 }
 var mockDb = loadMockDb();
+mockDb.family = mockDb.family || { enabled: false }; // на случай старых сохранённых тестовых данных без этого поля
 // Если mock-данные уже были сохранены раньше (например, ещё со старым
 // именем "Тестовый iPhone"), приводим запись владельца к реальному
 // определению его устройства/браузера — чтобы в списке был не тестовый,
@@ -1876,8 +1899,11 @@ function loadDevices(){
 function disconnectDevice(id){
   if(MOCK_MODE){
     return mockDelay(300).then(function(){
+      // ВАЖНО: удаление устройства освобождает МЕСТО в оплаченном лимите,
+      // но не должно менять сам лимит (mockDb.status.phones) — раньше здесь
+      // ошибочно приравнивали лимит к оставшемуся числу устройств, из-за
+      // чего "Свободные места" пропадали при каждом удалении.
       mockDb.devices = mockDb.devices.filter(function(d){ return d.id !== id; });
-      mockDb.status.phones = mockDb.devices.length;
       saveMockDb();
       return { ok: true };
     });
@@ -2173,6 +2199,7 @@ function renderHome(){
   document.getElementById('progressFill').style.width = Math.max(0, Math.min(100, 100 - (state.daysLeft/state.periodDays*100))) + '%';
   document.getElementById('devicesVal').textContent = state.devices.length + '/' + state.deviceLimit;
   renderDeviceLists(); // подстраховка: лимит/устройства могли обновиться отдельно от их загрузки
+  if(typeof renderFamilyModeUI === 'function'){ renderFamilyModeUI(); }
   document.getElementById('refLinkText2').textContent = state.refLink;
   document.getElementById('invitedFriendsTile') && (document.getElementById('invitedFriendsTile').textContent = state.invitedFriends);
   document.getElementById('refInvitedVal').textContent = state.invitedFriends;
@@ -2206,13 +2233,19 @@ function deviceRowHtml(dev, withKick){
   var statusText = isOnline
     ? ('В сети' + (timeNote ? ' • на связи ' + timeNote : ''))
     : ('Не в сети' + (timeNote ? ' • последний раз ' + timeNote : ''));
+  // Для участников семейной подписки отдельно показываем, что они платят
+  // свою долю сами и до какого момента она оплачена — это НЕ общий срок
+  // подписки владельца, а личный, независимый от группы.
+  if(dev.share_price && dev.paid_until){
+    statusText += ' • своя доля ' + dev.share_price + ' ₽, оплачено на ' + dev.paid_until;
+  }
   var dotHtml = '<span class="dot'+(isOnline ? '' : ' off')+'"></span>';
   var right;
   if(isOwner){
-    // Владелец не может отключить собственное основное устройство из этого списка.
+    // Владелец не может и не должен удалять собственное основное устройство.
     right = '<div class="owner-chip">Владелец</div>';
   } else if(withKick){
-    right = '<button class="kick-btn" data-action="kick-device" data-device-id="'+dev.id+'">Отключить</button>';
+    right = '<button class="kick-btn" data-action="kick-device" data-device-id="'+dev.id+'">Удалить</button>';
   } else {
     right = '<div class="status-chip">'+(isOnline ? 'В сети' : 'Офлайн')+'</div>';
   }
@@ -2399,22 +2432,64 @@ document.querySelectorAll('.switch').forEach(function(sw){
   });
 });
 
+/* ---------- семейная (групповая) подписка: каждый участник платит сам ---------- */
+function renderFamilyModeUI(){
+  var enabled = !!(mockDb.family && mockDb.family.enabled);
+  var sw = document.getElementById('familyModeSwitch');
+  var hint = document.getElementById('familyModeSub');
+  sw.classList.toggle('on', enabled);
+  if(enabled){
+    hint.textContent = 'Включено: доля на человека ' + familySharePrice() + ' ₽/мес при ' + state.deviceLimit + ' уч. — платит каждый за себя';
+  } else {
+    hint.textContent = 'Каждый участник платит свою долю сам';
+  }
+}
+document.getElementById('familyModeSwitch').addEventListener('click', function(){
+  // Общий обработчик .switch выше уже переключил визуальный класс 'on' —
+  // здесь просто читаем итоговое состояние и сохраняем его в mock-данные.
+  var enabled = this.classList.contains('on');
+  mockDb.family = mockDb.family || {};
+  mockDb.family.enabled = enabled;
+  saveMockDb();
+  renderFamilyModeUI();
+});
+renderFamilyModeUI();
+
 /* ---------- settings/home: kick device (real disconnect via backend) ---------- */
+// ВАЖНО: раньше подтверждение шло через tg.showConfirm()/window.confirm() —
+// в некоторых окружениях (песочницы предпросмотра, часть версий Telegram)
+// эти системные диалоги молча блокируются и колбэк вообще не вызывается,
+// из-за чего кнопка "Удалить" выглядела нерабочей. Теперь используем
+// собственную шторку (не зависит от браузера/клиента).
+var deleteConfirmSheetOverlay = document.getElementById('deleteConfirmSheetOverlay');
+var pendingDeleteDeviceId = null;
 document.addEventListener('click', function(e){
   var kickBtn = e.target.closest('[data-action="kick-device"]');
-  if(kickBtn){
-    var deviceId = kickBtn.getAttribute('data-device-id');
-    var row = kickBtn.closest('.device-row');
-    kickBtn.setAttribute('disabled', 'true');
-    disconnectDevice(deviceId).then(function(){
-      showToast('Устройство отключено');
-      return refreshDevices();
-    }).catch(function(err){
-      console.warn('disconnectDevice failed:', err);
-      kickBtn.removeAttribute('disabled');
-      showToast('Не удалось отключить устройство');
-    });
-  }
+  if(!kickBtn) return;
+  pendingDeleteDeviceId = kickBtn.getAttribute('data-device-id');
+  document.getElementById('deleteConfirmText').textContent = 'Удалить это устройство из подписки? Оно сразу потеряет доступ к VPN.';
+  deleteConfirmSheetOverlay.classList.add('open');
+});
+document.getElementById('deleteConfirmNoBtn').addEventListener('click', function(){
+  pendingDeleteDeviceId = null;
+  deleteConfirmSheetOverlay.classList.remove('open');
+});
+document.getElementById('deleteConfirmYesBtn').addEventListener('click', function(){
+  var deviceId = pendingDeleteDeviceId;
+  if(!deviceId){ deleteConfirmSheetOverlay.classList.remove('open'); return; }
+  var yesBtn = document.getElementById('deleteConfirmYesBtn');
+  yesBtn.setAttribute('disabled', 'true');
+  disconnectDevice(deviceId).then(function(){
+    deleteConfirmSheetOverlay.classList.remove('open');
+    yesBtn.removeAttribute('disabled');
+    pendingDeleteDeviceId = null;
+    showToast('Устройство удалено');
+    return refreshDevices();
+  }).catch(function(err){
+    console.warn('disconnectDevice failed:', err);
+    yesBtn.removeAttribute('disabled');
+    showToast('Не удалось удалить устройство');
+  });
 });
 
 /* ---------- download config ---------- */
@@ -2480,6 +2555,16 @@ function qtyNearestStop(val){
 function tierPriceFor(count){
   if(count<=1) return 0;
   return (count-1) * 40;
+}
+// Групповая (семейная) цена = обычная цена тарифа на текущее число участников
+// (group size = state.deviceLimit), поделённая поровну на всех. Базовая
+// ставка 120 ₽ берётся как цена 1-месячного тарифа — в реальном флоу нужно
+// брать цену того периода, который реально оплачен (месяц/3/6/12).
+function familyGroupTotal(){
+  return 120 + tierPriceFor(state.deviceLimit);
+}
+function familySharePrice(){
+  return Math.max(1, Math.round(familyGroupTotal() / Math.max(1, state.deviceLimit)));
 }
 // Привязывает слайдер (track/fill/thumb) к значению; onChange(value) вызывается при каждом изменении.
 function bindQtySlider(trackEl, fillEl, thumbEl, initialVal, onChange){
@@ -2692,6 +2777,16 @@ document.addEventListener('click', function(e){
   var slotBtn = e.target.closest('[data-action="invite-device"]');
   if(!slotBtn) return;
   document.getElementById('deviceInviteLinkInput').value = 'Генерируем ссылку…';
+  var familyOn = !!(mockDb.family && mockDb.family.enabled);
+  var shareInfo = document.getElementById('deviceInviteShareInfo');
+  if(familyOn){
+    shareInfo.style.display = 'block';
+    shareInfo.textContent = '💳 Семейная подписка: приглашённый человек платит свою долю сам — ' + familySharePrice() + ' ₽/мес.';
+    deviceInviteMockConnectBtn.textContent = 'Тест: оплатить ' + familySharePrice() + ' ₽ и подключить';
+  } else {
+    shareInfo.style.display = 'none';
+    deviceInviteMockConnectBtn.textContent = 'Тест: эмулировать подключение';
+  }
   deviceInviteMockConnectBtn.style.display = MOCK_MODE ? 'block' : 'none';
   deviceInviteSheetOverlay.classList.add('open');
   generateDeviceInviteLink().then(function(link){
@@ -2727,19 +2822,35 @@ document.getElementById('deviceInviteShareBtn').addEventListener('click', functi
 // Имя устройства строим тем же detectDeviceLabel(), что и для владельца:
 // в реальном флоу его сгенерирует браузер ПРИГЛАШЁННОГО человека при переходе
 // по ссылке на его собственном телефоне, а не устройство того, кто приглашает.
+// NOTE (важно для бэкенда): при включённой "Семейная подписка" реальную оплату
+// доли нужно проводить через Telegram Payments (bot.sendInvoice приглашённому
+// пользователю на сумму familySharePrice()), а не просто подключать устройство
+// бесплатно. bot/api.py пока не умеет выставлять инвойс конкретному участнику
+// и отслеживать его персональный paid_until — здесь это только симулируется.
 deviceInviteMockConnectBtn.addEventListener('click', function(){
   var newId = 'dev_' + (mockDb.nextDeviceId++);
-  mockDb.devices.push({
+  var familyOn = !!(mockDb.family && mockDb.family.enabled);
+  var dev = {
     id: newId,
     name: detectDeviceLabel(),
     connected_at: 'только что',
     online: true,
     role: 'member'
-  });
+  };
+  if(familyOn){
+    // Своя, отдельная от владельца оплата: этот участник платит и продлевает
+    // именно СВОЙ слот сам — если он не продлит, отключится только его
+    // устройство, а не вся группа.
+    dev.share_price = familySharePrice();
+    dev.paid_until = '30 дней';
+  }
+  mockDb.devices.push(dev);
   saveMockDb();
   refreshDevices();
   refineDeviceNameAsync(newId);
-  showToast('Тестовый режим: новое устройство подключено по ссылке');
+  showToast(familyOn
+    ? ('Тестовый режим: доля ' + dev.share_price + ' ₽ оплачена, устройство подключено')
+    : 'Тестовый режим: новое устройство подключено по ссылке');
   deviceInviteSheetOverlay.classList.remove('open');
 });
 
