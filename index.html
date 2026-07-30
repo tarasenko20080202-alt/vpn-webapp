@@ -434,6 +434,25 @@ vertical-align:middle;
 background:var(--steel);
 box-shadow:0 0 0 3px rgba(138,154,168,0.18);
 }
+.device-row .rename-btn{
+font-size:11px;
+opacity:0.55;
+cursor:pointer;
+}
+.device-row .rename-btn:active{
+opacity:1;
+}
+.device-row .rename-input{
+font-size:14px;
+font-weight:800;
+color:var(--ink);
+border:1.5px solid rgba(59,110,165,0.4);
+border-radius:8px;
+padding:2px 6px;
+width:100%;
+max-width:220px;
+font-family:inherit;
+}
 .tiles{
 display:grid;
 grid-template-columns:1fr 1fr;
@@ -1586,6 +1605,7 @@ function detectDeviceLabel(){
   var ua = navigator.userAgent || '';
   var platform = tg && tg.platform;
   var parts = [];
+  var skipClient = false; // для компьютера (Windows/Linux) остаётся только версия ОС, без клиента/браузера
 
   var androidMatch = ua.match(/Android\s([\d.]+)[^;]*;\s*([^;)]+)\)/i);
   if(androidMatch){
@@ -1600,28 +1620,35 @@ function detectDeviceLabel(){
     }
   } else if(/ipad/i.test(ua) || /iphone/i.test(ua)){
     var kind = /ipad/i.test(ua) ? 'iPad' : 'iPhone';
-    var iosMatch = ua.match(/OS (\d+)_(\d+)/);
-    var iosVer = iosMatch ? (iosMatch[1] + '.' + iosMatch[2]) : '';
+    // Номер версии iOS из User-Agent НЕ включаем: начиная с последних версий
+    // Safari сам "замораживает" эту цифру ради приватности (как Chrome для
+    // Windows) — реальное устройство может быть на iOS 26, а UA при этом
+    // покажет "18". Показывать заведомо ненадёжное число хуже, чем не
+    // показывать его вовсе.
     var gen = kind === 'iPhone' ? guessIphoneGeneration() : '';
-    parts.push(kind + (gen ? ' (' + gen + ')' : '') + (iosVer ? ', iOS ' + iosVer : ''));
+    parts.push(kind + (gen ? ' (' + gen + ')' : ''));
   } else if(/macintosh|mac os x/i.test(ua)){
     parts.push('Mac');
   } else if(/windows nt ([\d.]+)/i.test(ua)){
     var winMatch = ua.match(/windows nt ([\d.]+)/i);
     var winMap = { '10.0':'10/11', '6.3':'8.1', '6.2':'8', '6.1':'7' };
     parts.push('Windows ' + (winMap[winMatch[1]] || winMatch[1]));
+    skipClient = true;
   } else if(/linux/i.test(ua)){
     parts.push('Linux');
+    skipClient = true;
   } else {
     parts.push('Устройство');
   }
 
-  var client = '';
-  if(platform === 'ios' || platform === 'android') client = 'Telegram';
-  else if(platform === 'tdesktop') client = 'Telegram Desktop';
-  else if(platform === 'macos') client = 'Telegram macOS';
-  else if(platform === 'weba' || platform === 'web') client = 'Telegram Web';
-  if(client) parts.push(client);
+  if(!skipClient){
+    var client = '';
+    if(platform === 'ios' || platform === 'android') client = 'Telegram';
+    else if(platform === 'tdesktop') client = 'Telegram Desktop';
+    else if(platform === 'macos') client = 'Telegram macOS';
+    else if(platform === 'weba' || platform === 'web') client = 'Telegram Web';
+    if(client) parts.push(client);
+  }
 
   return parts.join(' • ');
 }
@@ -1664,39 +1691,28 @@ function refineComputerDeviceLabel(){
   var uad = navigator.userAgentData;
   if(!uad || !uad.getHighEntropyValues) return Promise.resolve(null);
   if(uad.platform !== 'Windows' && uad.platform !== 'Linux') return Promise.resolve(null);
-  return uad.getHighEntropyValues(['platformVersion', 'architecture', 'bitness', 'fullVersionList'])
+  return uad.getHighEntropyValues(['platformVersion'])
     .then(function(info){
-      var label;
       if(uad.platform === 'Windows'){
         // По документации Chromium: platformVersion старше "13.0.0" — Windows 11.
         var major = parseInt((info.platformVersion || '0').split('.')[0], 10);
-        label = major >= 13 ? 'Windows 11' : 'Windows 10';
-      } else {
-        label = 'Linux';
+        return major >= 13 ? 'Windows 11' : 'Windows 10';
       }
-      if(info.architecture){
-        label += ' (' + info.architecture + (info.bitness ? '-' + info.bitness : '') + ')';
-      }
-      var browser = '';
-      if(info.fullVersionList && info.fullVersionList.length){
-        var main = info.fullVersionList.filter(function(b){ return !/Not.?A.?Brand/i.test(b.brand); })[0];
-        if(main){ browser = main.brand + ' ' + main.version.split('.')[0]; }
-      }
-      return browser ? (label + ' • ' + browser) : label;
+      return 'Linux';
     })
     .catch(function(){ return null; });
 }
-// Дотягивает точную метку Windows/Linux асинхронно (Client Hints — это
-// Promise) и, если получилось, обновляет имя уже показанного устройства.
+// Дотягивает точную версию Windows/Linux асинхронно (Client Hints — это
+// Promise) и заменяет имя устройства ЦЕЛИКОМ на неё — без архитектуры,
+// браузера и клиента Telegram, только "Windows 10" / "Windows 11" / "Linux".
 // На iOS/Android/Mac и в Safari/Firefox просто ничего не делает — там и
 // так используется обычная (синхронная) оценка из detectDeviceLabel().
 function refineDeviceNameAsync(deviceId){
   refineComputerDeviceLabel().then(function(label){
     if(!label) return;
     var dev = mockDb.devices.filter(function(d){ return d.id === deviceId; })[0];
-    if(!dev) return;
-    var client = dev.name.indexOf('•') !== -1 ? dev.name.slice(dev.name.lastIndexOf('•')) : '';
-    dev.name = client ? (label + ' ' + client) : label;
+    if(!dev || dev.renamed) return;
+    dev.name = label;
     saveMockDb();
     refreshDevices();
   });
@@ -1778,7 +1794,8 @@ var mockDb = loadMockDb();
     owner = mockDb.devices[0];
     owner.role = 'owner';
   }
-  owner.name = detectDeviceLabel();
+  // Если пользователь уже переименовал устройство вручную — не трогаем его.
+  if(!owner.renamed){ owner.name = detectDeviceLabel(); }
   saveMockDb();
 })();
 function saveMockDb(){
@@ -2203,7 +2220,7 @@ function deviceRowHtml(dev, withKick){
     '<div class="device-row" data-device="'+dev.id+'">' +
       '<div class="left">' +
         '<div class="ico">📱</div>' +
-        '<div><div class="name">'+name+'</div><div class="sub">'+dotHtml+statusText+'</div></div>' +
+        '<div><div class="name">'+name+' <span class="rename-btn" data-action="rename-device" data-device-id="'+dev.id+'" title="Переименовать">✏️</span></div><div class="sub">'+dotHtml+statusText+'</div></div>' +
       '</div>' +
       right +
     '</div>';
@@ -2724,6 +2741,50 @@ deviceInviteMockConnectBtn.addEventListener('click', function(){
   refineDeviceNameAsync(newId);
   showToast('Тестовый режим: новое устройство подключено по ссылке');
   deviceInviteSheetOverlay.classList.remove('open');
+});
+
+/* ================= МАНУАЛЬНОЕ ПЕРЕИМЕНОВАНИЕ УСТРОЙСТВА ================= */
+// Точную модель телефона браузер не видит НИКОГДА (см. комментарии у
+// detectDeviceLabel/guessIphoneGeneration) — это ограничение платформы, а не
+// баг. Единственный честный способ получить действительно точное имя —
+// дать пользователю самому вписать его, как это делают все настоящие
+// VPN-приложения (Proton, NordVPN и т.д.). После ручного переименования
+// автоопределение больше не трогает это устройство (см. флаг renamed).
+document.addEventListener('click', function(e){
+  var editBtn = e.target.closest('[data-action="rename-device"]');
+  if(!editBtn) return;
+  var deviceId = editBtn.getAttribute('data-device-id');
+  var nameEl = editBtn.closest('.device-row').querySelector('.name');
+  if(!nameEl) return;
+  var current = (nameEl.textContent || '').replace('✏️', '').trim();
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.maxLength = 40;
+  input.value = current;
+  input.className = 'rename-input';
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  var done = false;
+  function commit(){
+    if(done) return;
+    done = true;
+    var val = input.value.trim();
+    if(val){
+      var dev = mockDb.devices.filter(function(d){ return d.id === deviceId; })[0];
+      if(dev){
+        dev.name = val;
+        dev.renamed = true;
+        saveMockDb();
+      }
+    }
+    refreshDevices();
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', function(ev){
+    if(ev.key === 'Enter'){ input.blur(); }
+    else if(ev.key === 'Escape'){ done = true; refreshDevices(); }
+  });
 });
 
 /* ================= SETUP SUBPAGE ================= */
